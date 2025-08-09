@@ -1,59 +1,71 @@
-import { initializeAppAndAuth, setupListeners } from './firebase.js';
-import { initializeEventHandlers } from './handlers.js';
-import { renderAllInitialTabs, updateAllViews } from './dom.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import * as state from './state.js';
-import { calculateAllPlayerStats } from './utils.js';
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCleKavI0XicnYv2Hl1tkRNRikCBrb8is4", // セキュリティのため、実際のキーに置き換えてください
+    authDomain: "edogawa-m-league-summary.firebaseapp.com",
+    projectId: "edogawa-m-league-summary",
+    storageBucket: "edogawa-m-league-summary.appspot.com",
+    messagingSenderId: "587593171009",
+    appId: "1:587593171009:web:b48dd5b809f2d2ce8886c0",
+    measurementId: "G-XMYXPG06QF"
+};
 
 /**
- * アプリケーションのデータが更新されたときに呼び出される中心的な関数。
- * 統計を再計算し、すべてのUIビューを更新します。
+ * Firebaseアプリを初期化し、認証状態を監視します。
+ * @param {Function} onAuthCallback - 認証状態が変更されたときに呼び出されるコールバック
  */
-function masterUpdateLoop() {
-    state.setCachedStats(calculateAllPlayerStats(state.getGames(), state.getUsers()));
-    updateAllViews();
-}
+export function initializeAppAndAuth(onAuthCallback) {
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
 
-/**
- * Firestoreからユーザーデータが更新されたときのコールバック
- * @param {Array} usersData - Firestoreから取得したユーザーデータの配列
- */
-function onUsersUpdate(usersData) {
-    usersData.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-    state.setUsers(usersData);
-    
-    // 選択中のプレイヤー情報も更新
-    const currentSelected = state.getSelectedPlayers();
-    const updatedSelected = currentSelected.map(sp => {
-        const updatedUser = usersData.find(u => u.id === sp.id);
-        return updatedUser ? { id: updatedUser.id, name: updatedUser.name, photoURL: updatedUser.photoURL } : sp;
-    });
-    state.setSelectedPlayers(updatedSelected);
+    state.setDb(db);
+    state.setAuth(auth);
+    state.setStorage(storage);
 
-    masterUpdateLoop();
-}
-
-/**
- * Firestoreからゲームデータが更新されたときのコールバック
- * @param {Array} gamesData - Firestoreから取得したゲームデータの配列
- */
-function onGamesUpdate(gamesData) {
-    state.setGames(gamesData);
-    masterUpdateLoop();
-}
-
-// アプリケーションの初期化
-document.addEventListener('DOMContentLoaded', () => {
-    renderAllInitialTabs();
-    initializeEventHandlers();
-    initializeAppAndAuth(
-        // onAuthStateChanged callback
-        (user) => {
-            if (user) {
-                document.getElementById('auth-status').textContent = `System Online // User: ${user.isAnonymous ? 'Guest' : user.uid}`;
-                setupListeners(onUsersUpdate, onGamesUpdate);
-            } else {
-                 document.getElementById('auth-status').textContent = 'Authentication Failure';
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            state.setCurrentUser(user);
+            onAuthCallback(user);
+        } else {
+            try {
+                const userCredential = await signInAnonymously(auth);
+                state.setCurrentUser(userCredential.user);
+                // `onAuthStateChanged`が再度発火するので、ここではコールバックを呼ばない
+            } catch (error) {
+                console.error("Authentication failed:", error);
+                onAuthCallback(null);
             }
         }
-    );
-});
+    });
+}
+
+/**
+ * Firestoreのデータ変更を監視するリスナーをセットアップします。
+ * @param {Function} onUsersUpdate - ユーザーデータ更新時のコールバック
+ * @param {Function} onGamesUpdate - ゲームデータ更新時のコールバック
+ */
+export function setupListeners(onUsersUpdate, onGamesUpdate) {
+    const db = state.getDb();
+    if (!db) return;
+
+    // Users listener
+    const usersCollectionRef = collection(db, `users`);
+    onSnapshot(usersCollectionRef, (snapshot) => {
+        const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        onUsersUpdate(usersData);
+    });
+
+    // Games listener
+    const gamesCollectionRef = collection(db, `games`);
+    const gamesQuery = query(gamesCollectionRef, orderBy("createdAt", "desc"));
+    onSnapshot(gamesQuery, (snapshot) => {
+        const gamesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        onGamesUpdate(gamesData);
+    });
+}
