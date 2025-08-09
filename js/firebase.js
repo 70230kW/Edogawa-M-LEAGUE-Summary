@@ -27,19 +27,17 @@ export function initializeAppAndAuth(onAuthCallback) {
     state.setAuth(auth);
     state.setStorage(storage);
 
-    onAuthStateChanged(auth, async (user) => {
+    onAuthStateChanged(auth, (user) => {
         if (user) {
+            // ユーザー情報があればコールバックを実行
             state.setCurrentUser(user);
             onAuthCallback(user);
         } else {
-            try {
-                const userCredential = await signInAnonymously(auth);
-                state.setCurrentUser(userCredential.user);
-                // `onAuthStateChanged`が再度発火するので、ここではコールバックを呼ばない
-            } catch (error) {
-                console.error("Authentication failed:", error);
+            // ユーザー情報がなければ匿名認証を実行
+            signInAnonymously(auth).catch((error) => {
+                console.error("Anonymous sign-in failed:", error);
                 onAuthCallback(null);
-            }
+            });
         }
     });
 }
