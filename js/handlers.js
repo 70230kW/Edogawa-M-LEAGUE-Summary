@@ -191,8 +191,7 @@ async function executeDeleteGame(gameId) {
  * `onclick` 属性から呼び出せるようにします。
  * また、主要な要素にイベントリスナーを設定します。
  */
-export function initializeHandlers() {
-    // タブ切り替え
+export function initializeEventHandlers() {    // タブ切り替え
     document.getElementById('tab-navigation').addEventListener('click', (e) => {
         const button = e.target.closest('.tab-btn');
         if (button) {
