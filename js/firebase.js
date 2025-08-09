@@ -5,15 +5,14 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-s
 import * as state from './state.js';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCleKavI0XicnYv2Hl1tkRNRikCBrb8is4", // セキュリティのため、実際のキーに置き換えてください
-    authDomain: "edogawa-m-league-summary.firebaseapp.com",
-    projectId: "edogawa-m-league-summary",
-    storageBucket: "edogawa-m-league-summary.appspot.com",
-    messagingSenderId: "587593171009",
-    appId: "1:587593171009:web:b48dd5b809f2d2ce8886c0",
-    measurementId: "G-XMYXPG06QF"
+  apiKey: "AIzaSyCleKavI0XicnYv2Hl1tkRNRikCBrb8is4",
+  authDomain: "edogawa-m-league-results.firebaseapp.com",
+  projectId: "edogawa-m-league-results",
+  storageBucket: "edogawa-m-league-results.firebasestorage.app",
+  messagingSenderId: "315224725184",
+  appId: "1:315224725184:web:e0f8dbca47f04b2fa37f25",
+  measurementId: "G-B3ZTXE1MYV"
 };
-
 /**
  * Firebaseアプリを初期化し、認証状態を監視します。
  * @param {Function} onAuthCallback - 認証状態が変更されたときに呼び出されるコールバック
