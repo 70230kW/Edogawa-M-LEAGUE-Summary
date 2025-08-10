@@ -466,7 +466,10 @@ export function renderTrophyTab() {
     if (!container) return;
     container.innerHTML = `
         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <h2 class="cyber-header text-2xl font-bold text-blue-400">トロフィー</h2>
+            <div class="flex items-center gap-2 flex-wrap">
+                <h2 class="cyber-header text-2xl font-bold text-blue-400">トロフィー</h2>
+                <span id="trophy-helper-text" class="text-sm text-gray-500"></span>
+            </div>
             <div class="flex items-center gap-4">
                 <select id="trophy-year-filter" class="rounded-md p-1"></select>
                 <select id="trophy-player-filter" class="rounded-md p-1"></select>
@@ -480,7 +483,8 @@ export function updateTrophyPage() {
     const container = document.getElementById('trophy-list-container');
     const yearSelect = document.getElementById('trophy-year-filter');
     const playerSelect = document.getElementById('trophy-player-filter');
-    if (!container || !yearSelect || !playerSelect) return;
+    const helperText = document.getElementById('trophy-helper-text');
+    if (!container || !yearSelect || !playerSelect || !helperText) return;
 
     const currentYear = yearSelect.value;
     const currentPlayer = playerSelect.value;
@@ -497,6 +501,12 @@ export function updateTrophyPage() {
 
     const yearFilter = yearSelect.value;
     const playerFilter = playerSelect.value;
+
+    if (playerFilter === 'all') {
+        helperText.textContent = 'トロフィーをタップすると獲得済みの雀士を確認できます';
+    } else {
+        helperText.textContent = '';
+    }
 
     const filteredGames = state.games.filter(game => {
         if (yearFilter === 'all') return true;
@@ -516,20 +526,22 @@ export function updateTrophyPage() {
             let isAchieved = false;
             if (playerFilter === 'all') {
                 isAchieved = Object.values(state.playerTrophies).some(p => p[trophy.id]);
-            } else if (playerFilter) { // 雀士が選択されている場合
+            } else if (playerFilter) {
                 isAchieved = state.playerTrophies[playerFilter]?.[trophy.id] || false;
             }
-            // playerFilterが"" (雀士を選択してください) の場合は isAchieved は false のまま
 
+            const isClickable = playerFilter === 'all' && isAchieved;
+            const actionAttribute = isClickable ? `data-action="show-trophy-achievers" data-trophy-id="${trophy.id}" data-trophy-name="${trophy.name}"` : '';
+            const cursorClass = isClickable ? 'cursor-pointer' : '';
             const secretClass = trophy.secret ? 'secret' : '';
             const trophyName = (trophy.secret && !isAchieved) ? '？？？' : trophy.name;
             const trophyDesc = (trophy.secret && !isAchieved) ? '条件を満たすと開示されます' : trophy.desc;
             const trophyIcon = (trophy.secret && !isAchieved) ? 'fa-question-circle' : trophy.icon;
 
             return `
-                    <div class="trophy-card p-4 flex items-center gap-4 rounded-lg rank-${rank} ${isAchieved ? 'achieved' : ''} ${secretClass}">
-                        <i class="fas ${trophyIcon} fa-3x w-12 text-center trophy-icon"></i>
-                        <div>
+                    <div class="trophy-card p-4 flex items-center gap-4 rounded-lg rank-${rank} ${isAchieved ? 'achieved' : ''} ${secretClass} ${cursorClass}" ${actionAttribute}>
+                        <i class="fas ${trophyIcon} fa-3x w-12 text-center trophy-icon pointer-events-none"></i>
+                        <div class="pointer-events-none">
                             <h4 class="font-bold text-lg">${trophyName}</h4>
                             <p class="text-sm text-gray-400">${trophyDesc}</p>
                         </div>
