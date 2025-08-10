@@ -1002,7 +1002,6 @@ export function updateDataAnalysisCharts() {
                 highestHanchan = { score, name: state.users.find(u=>u.id===pId)?.name, id: pId };
             }
         })));
-        // ... (more stat card logic can be added here)
         statCardsContainer.innerHTML = `
             <div class="cyber-card p-3"><p class="text-sm text-gray-400">総半荘数</p><p class="text-2xl font-bold">${totalHanchans}</p></div>
             <div class="cyber-card p-3"><p class="text-sm text-gray-400">開催日数</p><p class="text-2xl font-bold">${gameDays}</p></div>
