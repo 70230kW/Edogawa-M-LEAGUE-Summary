@@ -43,14 +43,14 @@ export function calculateAllPlayerStats(gamesToCalculate) {
                     stats[playerId].maxStreak.noTobi = Math.max(stats[playerId].maxStreak.noTobi, stats[playerId].currentStreak.noTobi);
                 }
             });
-            
+
             const scoreGroups = {};
             Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
                 if (!scoreGroups[score]) scoreGroups[score] = [];
                 scoreGroups[score].push(pId);
             });
             const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
-            
+
             let rankCursor = 0;
             sortedScores.forEach(score => {
                 const playersInGroup = scoreGroups[score];
@@ -62,7 +62,7 @@ export function calculateAllPlayerStats(gamesToCalculate) {
                         if (currentRank <= 1) { stats[pId].currentStreak.rentai++; } else { stats[pId].currentStreak.rentai = 0; }
                         if (currentRank === 0) { stats[pId].currentStreak.top++; } else { stats[pId].currentStreak.top = 0; }
                         if (currentRank === 3) { stats[pId].currentStreak.noLast = 0; } else { stats[pId].currentStreak.noLast++; }
-                        if(stats[pId].lastRank === currentRank) { stats[pId].currentStreak.sameRank++; } else { stats[pId].currentStreak.sameRank = 1; }
+                        if (stats[pId].lastRank === currentRank) { stats[pId].currentStreak.sameRank++; } else { stats[pId].currentStreak.sameRank = 1; }
 
                         stats[pId].maxStreak.rentai = Math.max(stats[pId].maxStreak.rentai, stats[pId].currentStreak.rentai);
                         stats[pId].maxStreak.top = Math.max(stats[pId].maxStreak.top, stats[pId].currentStreak.top);
@@ -75,7 +75,7 @@ export function calculateAllPlayerStats(gamesToCalculate) {
             });
 
             Object.keys(hanchan.rawScores).forEach(pId => {
-                if(stats[pId]) stats[pId].totalHanchans++;
+                if (stats[pId]) stats[pId].totalHanchans++;
             });
 
             if (hanchan.yakumanEvents) {
@@ -148,7 +148,7 @@ export function calculateHanchanRanksAndPoints(scores) {
         scoreGroups[s].push(playerId);
     });
     const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
-    
+
     let rankCursor = 1;
     sortedScores.forEach(score => {
         const playersInGroup = scoreGroups[score];
@@ -196,14 +196,14 @@ export function getGameDataFromForm(onlyCompleted) {
         Number(document.getElementById('uma-1').value), Number(document.getElementById('uma-2').value),
         Number(document.getElementById('uma-3').value), Number(document.getElementById('uma-4').value)
     ];
-    
+
     const processedHanchans = [];
-    
+
     for (let i = 0; i < state.hanchanScores.length; i++) {
         const hanchan = state.hanchanScores[i];
         const scores = hanchan.rawScores;
         const isComplete = Object.values(scores).every(s => s !== null && s !== '');
-        
+
         if (!isComplete) {
             if (onlyCompleted) continue;
             return { error: `半荘 #${i + 1} の全ての素点を入力してください。` };
@@ -211,7 +211,7 @@ export function getGameDataFromForm(onlyCompleted) {
 
         const total = Object.values(scores).reduce((sum, score) => sum + Number(score), 0);
         if (Math.round(total) !== basePoint * 4) {
-            return { error: `半荘 #${i + 1} の合計点が ${basePoint*4} になっていません。(現在: ${total})` };
+            return { error: `半荘 #${i + 1} の合計点が ${basePoint * 4} になっていません。(現在: ${total})` };
         }
         processedHanchans.push(hanchan);
     }
@@ -236,14 +236,13 @@ export function getGameDataFromForm(onlyCompleted) {
 
 export function checkAllTrophies(targetGames, currentStats) {
     state.playerTrophies = {};
-    const rankedUsers = Object.values(currentStats).filter(u => u.totalHanchans > 0).sort((a,b) => b.totalPoints - a.totalPoints);
-
+    
     state.users.forEach(user => {
         state.playerTrophies[user.id] = {};
         const stats = currentStats[user.id];
         if (!stats || stats.totalHanchans === 0) return;
 
-        const playerGames = targetGames.filter(g => g.playerIds.includes(user.id));
+        const playerGames = targetGames.filter(g => g.playerIds.includes(user.id)).sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
         const dailyPoints = {};
         const dailyScores = {};
         const monthlyHanchans = {};
@@ -251,19 +250,18 @@ export function checkAllTrophies(targetGames, currentStats) {
         playerGames.forEach(g => {
             if (g.gameDate) {
                 const date = g.gameDate.split('(')[0];
-                if(!dailyPoints[date]) dailyPoints[date] = 0;
+                if (!dailyPoints[date]) dailyPoints[date] = 0;
                 dailyPoints[date] += g.totalPoints[user.id];
-                
-                if(!dailyScores[date]) dailyScores[date] = [];
+
+                if (!dailyScores[date]) dailyScores[date] = [];
                 g.scores.forEach(s => dailyScores[date].push(s.rawScores[user.id]));
 
                 const month = g.gameDate.substring(0, 7); // yyyy/mm
-                if(!monthlyHanchans[month]) monthlyHanchans[month] = 0;
+                if (!monthlyHanchans[month]) monthlyHanchans[month] = 0;
                 monthlyHanchans[month] += g.scores.length;
-
             }
         });
-        
+
         // Bronze
         state.playerTrophies[user.id].first_game = stats.totalHanchans > 0;
         state.playerTrophies[user.id].first_top = stats.ranks[0] > 0;
@@ -277,7 +275,7 @@ export function checkAllTrophies(targetGames, currentStats) {
             targetGames.filter(g => g.gameDate && g.gameDate.startsWith(date)).forEach(g => {
                 g.scores.forEach(s => {
                     Object.values(s.rawScores).forEach(score => {
-                        if(score > maxScoreToday) maxScoreToday = score;
+                        if (score > maxScoreToday) maxScoreToday = score;
                     })
                 })
             });
@@ -293,53 +291,173 @@ export function checkAllTrophies(targetGames, currentStats) {
         state.playerTrophies[user.id].ten_tops = stats.ranks[0] >= 10;
         state.playerTrophies[user.id].monthly_player = Object.values(monthlyHanchans).some(count => count >= 15);
         state.playerTrophies[user.id].zero_point_finish = playerGames.some(g => g.totalPoints[user.id] === 0.0);
-        
+
         const allDailyPoints = {};
         targetGames.forEach(g => {
             if (g.gameDate) {
                 const date = g.gameDate.split('(')[0];
-                if (!allDailyPoints[date]) {
-                    allDailyPoints[date] = {};
-                }
+                if (!allDailyPoints[date]) allDailyPoints[date] = {};
                 Object.entries(g.totalPoints).forEach(([pId, points]) => {
-                    if (!allDailyPoints[date][pId]) {
-                        allDailyPoints[date][pId] = 0;
-                    }
+                    if (!allDailyPoints[date][pId]) allDailyPoints[date][pId] = 0;
                     allDailyPoints[date][pId] += points;
                 });
             }
         });
-
         state.playerTrophies[user.id].dramatic_finish = Object.keys(dailyPoints).some(date => {
-            const gamesOnDate = playerGames.filter(g => g.gameDate && g.gameDate.startsWith(date)).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            const gamesOnDate = playerGames.filter(g => g.gameDate && g.gameDate.startsWith(date));
             if (gamesOnDate.length < 2) return false;
-
             const dailyTotalsForDate = allDailyPoints[date];
             if (!dailyTotalsForDate || Object.keys(dailyTotalsForDate).length === 0) return false;
-            
             const winnerEntry = Object.entries(dailyTotalsForDate).reduce((a, b) => (a[1] > b[1] ? a : b), [null, -Infinity]);
-            const dailyWinnerId = winnerEntry[0];
-
-            if (dailyWinnerId !== user.id) return false;
-
+            if (winnerEntry[0] !== user.id) return false;
             const lastGame = gamesOnDate[gamesOnDate.length - 1];
-            
             const pointsBeforeLastGame = {};
             Object.entries(dailyTotalsForDate).forEach(([pId, total]) => {
-                const pointsInLast = lastGame.totalPoints[pId] || 0;
-                pointsBeforeLastGame[pId] = total - pointsInLast;
+                pointsBeforeLastGame[pId] = total - (lastGame.totalPoints[pId] || 0);
             });
-
             if (Object.keys(pointsBeforeLastGame).length === 0) return false;
-
             const winnerBeforeLastGameEntry = Object.entries(pointsBeforeLastGame).reduce((a, b) => (a[1] > b[1] ? a : b), [null, -Infinity]);
-            const winnerBeforeLastGameId = winnerBeforeLastGameEntry[0];
-            
-            return winnerBeforeLastGameId !== user.id;
+            return winnerBeforeLastGameEntry[0] !== user.id;
         });
+
+        // Gold
+        state.playerTrophies[user.id].fifty_tops = stats.ranks[0] >= 50;
+        state.playerTrophies[user.id].close_win = playerGames.some(g => g.scores.some(s => {
+            const scores = Object.entries(s.rawScores).sort((a, b) => b[1] - a[1]);
+            return scores.length > 1 && scores[0][0] === user.id && (scores[0][1] - scores[1][1]) < 1000;
+        }));
+        state.playerTrophies[user.id].all_negative_win = playerGames.some(g => g.scores.some(s => {
+            const myPoint = s.points[user.id];
+            const othersPoints = Object.entries(s.points).filter(([pId]) => pId !== user.id).map(([, point]) => point);
+            return myPoint > 0 && othersPoints.every(p => p < 0);
+        }));
+        state.playerTrophies[user.id].ten_no_last = stats.maxStreak.noLast >= 10;
+        state.playerTrophies[user.id].three_same_rank = stats.maxStreak.sameRank >= 3;
+        state.playerTrophies[user.id].finish_over_50k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] >= 50000));
+        state.playerTrophies[user.id].score_under_minus_30k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] < -30000));
+
+        // Platinum
+        state.playerTrophies[user.id].two_hundred_games = stats.totalHanchans >= 200;
+        state.playerTrophies[user.id].four_top_streak = stats.maxStreak.top >= 4;
+        state.playerTrophies[user.id].twenty_five_no_last = stats.maxStreak.noLast >= 25;
+        state.playerTrophies[user.id].finish_over_70k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] >= 70000));
+        state.playerTrophies[user.id].avg_rank_2_3 = stats.totalHanchans >= 50 && stats.avgRank <= 2.3;
+        let closeGamesCount = 0;
+        playerGames.forEach(g => g.scores.forEach(s => {
+            const scores = Object.values(s.rawScores).sort((a, b) => b - a);
+            if (scores.length > 1 && (scores[0] - scores[1]) < 1000) closeGamesCount++;
+        }));
+        state.playerTrophies[user.id].ten_close_games = closeGamesCount >= 10;
+        state.playerTrophies[user.id].undefeated_month = Object.keys(monthlyHanchans).some(month => {
+            if (monthlyHanchans[month] >= 10) {
+                const gamesInMonth = playerGames.filter(g => g.gameDate && g.gameDate.startsWith(month));
+                return !gamesInMonth.some(g => g.scores.some(s => {
+                    const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores);
+                    return rawRanks[user.id] === 4;
+                }));
+            }
+            return false;
+        });
+
+        const achievedYakuman = new Set();
+        playerGames.forEach(g => g.scores.forEach(s => {
+            if (s.yakumanEvents) s.yakumanEvents.forEach(y => {
+                if (y.playerId === user.id) y.yakumans.forEach(yakuman => achievedYakuman.add(yakuman));
+            })
+        }));
+        state.playerTrophies[user.id].kokushi = achievedYakuman.has('国士無双');
+        state.playerTrophies[user.id].suuankou = achievedYakuman.has('四暗刻');
+        state.playerTrophies[user.id].daisangen = achievedYakuman.has('大三元');
+        state.playerTrophies[user.id].tsuuiisou = achievedYakuman.has('字一色');
+        state.playerTrophies[user.id].ryuuiisou = achievedYakuman.has('緑一色');
+        state.playerTrophies[user.id].chinroutou = achievedYakuman.has('清老頭');
+        state.playerTrophies[user.id].chuuren = achievedYakuman.has('九蓮宝燈');
+        state.playerTrophies[user.id].shousuushii = achievedYakuman.has('小四喜');
+
+        // Crystal
+        state.playerTrophies[user.id].five_top_streak = stats.maxStreak.top >= 5;
+        state.playerTrophies[user.id].yearly_avg_rank_2_0 = stats.totalHanchans >= 50 && stats.avgRank <= 2.0;
+        state.playerTrophies[user.id].thirty_no_last = stats.maxStreak.noLast >= 30;
+        state.playerTrophies[user.id].finish_over_100k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] >= 100000));
+        state.playerTrophies[user.id].two_yakuman_day = Object.keys(dailyPoints).some(date => {
+            let yakumanCountToday = 0;
+            playerGames.filter(g => g.gameDate && g.gameDate.startsWith(date)).forEach(g => {
+                g.scores.forEach(s => {
+                    if (s.yakumanEvents) s.yakumanEvents.forEach(y => {
+                        if (y.playerId === user.id) yakumanCountToday += y.yakumans.length;
+                    });
+                });
+            });
+            return yakumanCountToday >= 2;
+        });
+        state.playerTrophies[user.id].three_yakuman_types = achievedYakuman.size >= 3;
+        state.playerTrophies[user.id].tenhou = achievedYakuman.has('天和');
+        state.playerTrophies[user.id].chiihou = achievedYakuman.has('地和');
+        state.playerTrophies[user.id].kokushi13 = achievedYakuman.has('国士無双十三面待ち');
+        state.playerTrophies[user.id].suuankou_tanki = achievedYakuman.has('四暗刻単騎');
+        state.playerTrophies[user.id].junsei_chuuren = achievedYakuman.has('純正九蓮宝燈');
+        state.playerTrophies[user.id].daisuushii = achievedYakuman.has('大四喜');
         
-        // Gold and other ranks...
-        // This is a simplified version. The original file has more trophy logic.
-        // For the sake of providing a complete file, we'll assume the logic continues here.
+        let allPlayerHanchans = [];
+        playerGames.forEach(g => g.scores.forEach(s => allPlayerHanchans.push(s)));
+        if (allPlayerHanchans.length >= 100) {
+            const recent100Hanchans = allPlayerHanchans.slice(-100);
+            let totalRank = 0;
+            recent100Hanchans.forEach(s => {
+                const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores);
+                totalRank += rawRanks[user.id];
+            });
+            state.playerTrophies[user.id].recent_100_avg_rank_1_5 = (totalRank / 100) <= 1.5;
+        }
+
+
+        // Chaos
+        state.playerTrophies[user.id].yakuman_then_busted_last = playerGames.some((game, i) => {
+            if (i === 0) return false;
+            const prevGame = playerGames[i - 1];
+            const hadYakumanPrev = prevGame.scores.some(s => s.yakumanEvents && s.yakumanEvents.some(y => y.playerId === user.id));
+            if (!hadYakumanPrev) return false;
+            return game.scores.some(s => {
+                const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores);
+                return s.rawScores[user.id] < 0 && rawRanks[user.id] === 4;
+            });
+        });
+        state.playerTrophies[user.id].perfect_world = targetGames.some(g => g.scores.some(s => {
+            const scores = Object.values(s.rawScores).sort((a, b) => b - a);
+            return scores.length === 4 && scores[0] === 40000 && scores[1] === 30000 && scores[2] === 20000 && scores[3] === 10000;
+        }));
+        state.playerTrophies[user.id].reincarnation = targetGames.some((g, i) => {
+            if (i === 0) return false;
+            const prevGame = targetGames[i - 1];
+            if (g.playerIds.length !== 4 || prevGame.playerIds.length !== 4) return false;
+            const sortedPids = [...g.playerIds].sort();
+            const sortedPrevPids = [...prevGame.playerIds].sort();
+            if (JSON.stringify(sortedPids) !== JSON.stringify(sortedPrevPids)) return false;
+
+            return g.scores.every((s, hanchanIdx) => {
+                if (!prevGame.scores[hanchanIdx]) return false;
+                const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores);
+                const { rawRanks: prevRanks } = calculateHanchanRanksAndPoints(prevGame.scores[hanchanIdx].rawScores);
+                return g.playerIds.every(pId => rawRanks[pId] + prevRanks[pId] === 5);
+            });
+        });
+        state.playerTrophies[user.id].reroll = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] === g.settings.basePoint));
+        state.playerTrophies[user.id].chaos_theory = (() => {
+            let consecutiveDifferentRanks = 0;
+            for (const game of playerGames) {
+                for (const hanchan of game.scores) {
+                    const { rawRanks } = calculateHanchanRanksAndPoints(hanchan.rawScores);
+                    const ranks = Object.values(rawRanks);
+                    if (new Set(ranks).size === 4) {
+                        consecutiveDifferentRanks++;
+                    } else {
+                        consecutiveDifferentRanks = 0;
+                    }
+                    if (consecutiveDifferentRanks >= 4) return true;
+                }
+            }
+            return false;
+        })();
+        state.playerTrophies[user.id].peaceful_village = targetGames.some(g => g.scores.some(s => Object.values(s.rawScores).every(score => score === 25000)));
     });
 }
