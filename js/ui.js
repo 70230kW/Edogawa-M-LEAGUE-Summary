@@ -986,32 +986,32 @@ export function updateDataAnalysisCharts() {
     if (state.users.length === 0 || state.games.length === 0) return;
     
     const rankedUsers = Object.values(state.cachedStats).filter(u => u.totalHanchans > 0);
+    if (rankedUsers.length === 0) return;
+
     const colors = ['#58a6ff', '#52c569', '#f5655f', '#E2FF08', '#e0aaff', '#9bf6ff', '#ffb700', '#00ffc8'];
     const allPlayers = [...rankedUsers].sort((a,b) => b.totalPoints - a.totalPoints);
 
     // Stat Cards
     const statCardsContainer = document.getElementById('stat-cards-container');
-    if (rankedUsers.length > 0) {
-        const totalHanchans = rankedUsers.reduce((sum, u) => sum + u.totalHanchans, 0);
-        const gameDays = new Set(state.games.map(g => g.gameDate.split('(')[0])).size;
-        const leader = allPlayers[0];
-        let highestHanchan = { score: -Infinity, name: '', id: '' };
-        state.games.forEach(g => g.scores.forEach(s => Object.entries(s.rawScores).forEach(([pId, score]) => {
-            if (score > highestHanchan.score) {
-                highestHanchan = { score, name: state.users.find(u=>u.id===pId)?.name, id: pId };
-            }
-        })));
-        statCardsContainer.innerHTML = `
-            <div class="cyber-card p-3"><p class="text-sm text-gray-400">総半荘数</p><p class="text-2xl font-bold">${totalHanchans}</p></div>
-            <div class="cyber-card p-3"><p class="text-sm text-gray-400">開催日数</p><p class="text-2xl font-bold">${gameDays}</p></div>
-            <div class="cyber-card p-3"><p class="text-sm text-gray-400">現時点トップ</p><p class="text-xl font-bold">${leader.name}</p></div>
-            <div class="cyber-card p-3"><p class="text-sm text-gray-400">1半荘最高素点</p><p class="text-xl font-bold">${highestHanchan.name}</p><p class="text-xs">${highestHanchan.score.toLocaleString()}点</p></div>
-        `;
-    }
+    const totalHanchans = rankedUsers.reduce((sum, u) => sum + u.totalHanchans, 0);
+    const gameDays = new Set(state.games.map(g => g.gameDate.split('(')[0])).size;
+    const leader = allPlayers[0];
+    let highestHanchan = { score: -Infinity, name: '', id: '' };
+    state.games.forEach(g => g.scores.forEach(s => Object.entries(s.rawScores).forEach(([pId, score]) => {
+        if (score > highestHanchan.score) {
+            highestHanchan = { score, name: state.users.find(u=>u.id===pId)?.name, id: pId };
+        }
+    })));
+    statCardsContainer.innerHTML = `
+        <div class="cyber-card p-3"><p class="text-sm text-gray-400">総半荘数</p><p class="text-2xl font-bold">${totalHanchans}</p></div>
+        <div class="cyber-card p-3"><p class="text-sm text-gray-400">開催日数</p><p class="text-2xl font-bold">${gameDays}</p></div>
+        <div class="cyber-card p-3"><p class="text-sm text-gray-400">現時点トップ</p><p class="text-xl font-bold">${leader.name}</p></div>
+        <div class="cyber-card p-3"><p class="text-sm text-gray-400">1半荘最高素点</p><p class="text-xl font-bold">${highestHanchan.name}</p><p class="text-xs">${highestHanchan.score.toLocaleString()}点</p></div>
+    `;
 
     // Top 3 Players
     const top3Container = document.getElementById('top-3-container');
-    if (top3Container && allPlayers.length > 0) {
+    if (top3Container) {
         top3Container.innerHTML = `<h3 class="cyber-header text-xl font-bold mb-4 text-center text-yellow-300">現時点トップ３</h3>
             <div class="flex justify-around items-end gap-4">
                 ${allPlayers.slice(0, 3).map((p, i) => {
@@ -1039,7 +1039,7 @@ export function updateDataAnalysisCharts() {
     const normalize = (value, key) => {
         const { min, max } = minMax[key];
         if (max === min) return 50;
-        if (key === 'lastRate' || key === 'avgRank') {
+        if (key === 'lastRate' || key === 'avgRank') { // Lower is better
             return 100 * ((max - value) / (max - min));
         }
         return 100 * ((value - min) / (max - min));
