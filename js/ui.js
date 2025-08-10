@@ -1031,30 +1031,21 @@ export function updateDataAnalysisCharts() {
     const radarLabels = ['平均素点', 'トップ率', '連対率', 'ラス回避率', '平均順位'];
     const radarStatKeys = ['avgRawScore', 'topRate', 'rentaiRate', 'lastRate', 'avgRank'];
     
-    // ★★★ 修正箇所 ★★★
-    // 各軸の最小値と最大値を固定値で定義
     const fixedAxes = {
         avgRawScore: { min: 0, max: 35000 },
         topRate: { min: 0, max: 50 },
         rentaiRate: { min: 0, max: 100 },
-        lastRate: { min: 0, max: 100 }, // ラス率 (0%が良い)
-        avgRank: { min: 1, max: 4 }      // 平均順位 (1が良い)
+        lastRate: { min: 0, max: 100 },
+        avgRank: { min: 1, max: 4 }
     };
 
-    // データを0-100の範囲に正規化する関数
     const normalize = (value, key) => {
         const { min, max } = fixedAxes[key];
-        if (max === min) return 50; // ゼロ除算を避ける
-
-        // 値が定義された範囲外に出た場合、範囲内に収める
+        if (max === min) return 50;
         const clampedValue = Math.max(min, Math.min(max, value));
-
-        // 平均順位とラス率は、数値が低いほど良い成績なので、グラフ上の評価を反転させる
         if (key === 'lastRate' || key === 'avgRank') {
             return 100 * ((max - clampedValue) / (max - min));
         }
-        
-        // その他の項目は、数値が高いほど良い成績
         return 100 * ((clampedValue - min) / (max - min));
     };
 
@@ -1062,9 +1053,11 @@ export function updateDataAnalysisCharts() {
         labels: radarLabels,
         datasets: allPlayers.map((player, index) => {
             const stats = state.cachedStats[player.id];
+            const originalData = radarStatKeys.map(key => stats[key]);
             return {
                 label: player.name,
                 data: radarStatKeys.map(key => normalize(stats[key], key)),
+                originalData: originalData,
                 borderColor: colors[index % colors.length],
                 backgroundColor: colors[index % colors.length] + '33',
             };
@@ -1076,7 +1069,29 @@ export function updateDataAnalysisCharts() {
         data: radarData,
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#c9d1d9' }}},
+            plugins: {
+                legend: { labels: { color: '#c9d1d9' }},
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            if (!label) return '';
+                            const statKey = radarStatKeys[context.dataIndex];
+                            const originalValue = context.dataset.originalData[context.dataIndex];
+                            
+                            let formattedValue = originalValue;
+                            if (statKey === 'avgRank') {
+                                formattedValue = originalValue.toFixed(2);
+                            } else if (statKey.includes('Rate')) {
+                                formattedValue = originalValue.toFixed(2) + '%';
+                            } else {
+                                formattedValue = originalValue.toLocaleString();
+                            }
+                            return `${label}: ${formattedValue}`;
+                        }
+                    }
+                }
+            },
             scales: { r: { angleLines: { color: '#30363d' }, grid: { color: '#30363d' }, pointLabels: { color: '#c9d1d9', font: { size: 14 }}, suggestedMin: 0, suggestedMax: 100, ticks: { display: false }}}
         }
     });
