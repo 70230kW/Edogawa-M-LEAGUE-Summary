@@ -1066,10 +1066,10 @@ export function updateDataAnalysisCharts() {
         const { min, max } = fixedAxes[key];
         if (max === min) return 50;
         const clampedValue = Math.max(min, Math.min(max, value));
-        if (key === 'lastRate') { // ラス率は低い方が良いので反転
+        if (key === 'lastRate') {
             return 100 * ((max - clampedValue) / (max - min));
         }
-        if (key === 'avgRank') { // 平均順位は低い方が良いので反転
+        if (key === 'avgRank') {
             return 100 * ((max - clampedValue) / (max - min));
         }
         return 100 * ((clampedValue - min) / (max - min));
