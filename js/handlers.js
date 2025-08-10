@@ -60,54 +60,45 @@ function handleGlobalChange(e) {
 function handleGlobalClick(e) {
     const target = e.target;
     const button = target.closest('button');
-    const link = target.closest('[data-action]');
+    const clickableElement = target.closest('[data-action]');
 
-    if (link && link.dataset.action === 'show-player-stats') {
-        showPlayerStats(link.dataset.userId);
+    if (clickableElement) {
+        const { action, userId, gameId, date, index, trophyId, trophyName } = clickableElement.dataset;
+
+        if (action === 'show-player-stats') showPlayerStats(userId);
+        if (action === 'show-game-details') ui.showGameDetails(gameId);
+        if (action === 'edit-game') editGame(gameId);
+        if (action === 'delete-game') confirmDeleteGame(gameId, date);
+        if (action === 'edit-hanchan') openScoreInputModal(index);
+        if (action === 'delete-hanchan') deleteHanchanHandler(index);
+        if (action === 'save-modal-scores') saveScoresFromModalHandler(index);
+        if (action === 'open-yakuman-modal') openYakumanEventModal(index);
+        if (action === 'open-penalty-modal') openPenaltyModal(index);
+        if (action === 'add-yakuman') addYakumanEvent(index);
+        if (action === 'add-penalty') addPenalty(index);
+        if (action === 'keypad') keypadInput(clickableElement.dataset.key);
+        if (action === 'add-user') addUser();
+        if (action === 'edit-user') toggleEditUser(userId);
+        if (action === 'delete-user') confirmDeleteUser(userId);
+        if (action === 'confirm-delete-user') executeDeleteUser(userId);
+        if (action === 'confirm-delete-game') executeDeleteGame(gameId);
+        if (action === 'show-trophy-achievers') showTrophyAchievers(trophyId, trophyName);
     }
-    
-    if (!button) return;
 
-    const action = button.dataset.action;
-    const index = button.dataset.index;
-    const userId = button.dataset.userId;
-    const gameId = button.dataset.gameId;
-    const date = button.dataset.date;
-
-    // Game Flow
-    if (button.id === 'to-step2-btn') moveToStep2();
-    if (button.id === 'to-step3-btn') moveToStep3();
-    if (button.id === 'back-to-step1-btn') backToStep1();
-    if (button.id === 'back-to-step2-btn') backToStep2();
-    if (button.id === 'set-mleague-rules-btn') setMLeagueRules();
-    if (button.id === 'set-today-date-btn') setTodayDate();
-    if (button.id === 'add-hanchan-btn') addHanchanHandler();
-    if (button.id === 'save-partial-btn') savePartialDataHandler();
-    if (button.id === 'show-pt-status-btn') showCurrentPtStatus();
-    if (button.id === 'save-game-btn') calculateAndSave();
-
-    // Hanchan Actions
-    if (action === 'edit-hanchan') openScoreInputModal(index);
-    if (action === 'delete-hanchan') deleteHanchanHandler(index);
-    if (action === 'save-modal-scores') saveScoresFromModalHandler(index);
-    if (action === 'open-yakuman-modal') openYakumanEventModal(index);
-    if (action === 'open-penalty-modal') openPenaltyModal(index);
-    if (action === 'add-yakuman') addYakumanEvent(index);
-    if (action === 'add-penalty') addPenalty(index);
-    if (action === 'keypad') keypadInput(button.dataset.key);
-
-    // User Management
-    if (action === 'add-user') addUser();
-    if (action === 'edit-user') toggleEditUser(userId);
-    if (action === 'delete-user') confirmDeleteUser(userId);
-    if (action === 'confirm-delete-user') executeDeleteUser(userId);
-    
-    // History Actions
-    if (action === 'show-game-details') ui.showGameDetails(gameId);
-    if (action === 'edit-game') editGame(gameId);
-    if (action === 'delete-game') confirmDeleteGame(gameId, date);
-    if (action === 'confirm-delete-game') executeDeleteGame(gameId);
+    if (button) {
+        if (button.id === 'to-step2-btn') moveToStep2();
+        if (button.id === 'to-step3-btn') moveToStep3();
+        if (button.id === 'back-to-step1-btn') backToStep1();
+        if (button.id === 'back-to-step2-btn') backToStep2();
+        if (button.id === 'set-mleague-rules-btn') setMLeagueRules();
+        if (button.id === 'set-today-date-btn') setTodayDate();
+        if (button.id === 'add-hanchan-btn') addHanchanHandler();
+        if (button.id === 'save-partial-btn') savePartialDataHandler();
+        if (button.id === 'show-pt-status-btn') showCurrentPtStatus();
+        if (button.id === 'save-game-btn') calculateAndSave();
+    }
 }
+
 
 function handleGlobalInput(e) {
     if (e.target.matches('#base-point, #return-point')) {
@@ -601,4 +592,32 @@ function showPlayerStats(playerId) {
     const select = document.getElementById('personal-stats-player-select');
     select.value = playerId;
     ui.displayPlayerStats(playerId);
+}
+
+function showTrophyAchievers(trophyId, trophyName) {
+    const achievers = state.users.filter(user => state.playerTrophies[user.id]?.[trophyId]);
+    
+    if (achievers.length === 0) {
+        ui.showModalMessage(`このトロフィーの獲得者はいません。`);
+        return;
+    }
+
+    const achieversHtml = achievers.map(user => {
+        return `<div class="flex items-center gap-3 bg-gray-800 p-2 rounded-md">
+                    ${ui.getPlayerPhotoHtml(user.id, 'w-10 h-10')}
+                    <span class="font-bold">${user.name}</span>
+                </div>`;
+    }).join('');
+
+    const modalContent = `
+        <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">${trophyName}</h3>
+        <p class="mb-4">獲得者一覧:</p>
+        <div class="space-y-2 max-h-60 overflow-y-auto">
+            ${achieversHtml}
+        </div>
+        <div class="flex justify-end mt-6">
+            <button id="modal-close-btn" class="cyber-btn px-4 py-2">閉じる</button>
+        </div>
+    `;
+    ui.showModal(modalContent);
 }
