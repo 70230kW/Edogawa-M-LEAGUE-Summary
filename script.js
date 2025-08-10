@@ -398,7 +398,9 @@ function renderGameTab() {
                      <button onclick="setTodayDate()" class="cyber-btn px-4 py-2 rounded-lg">今日</button>
                  </div>
              </div>
+             <!-- Score display area -->
              <div id="score-display-area" class="space-y-4"></div>
+             <!-- Action buttons -->
              <div class="flex flex-col sm:flex-row justify-between items-center mt-4 flex-wrap gap-4">
                  <div class="flex gap-2 w-full sm:w-auto">
                      <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg w-full"><i class="fas fa-plus mr-2"></i>半荘追加</button>
@@ -433,8 +435,10 @@ function renderLeaderboardTab() {
             </div>
         </div>
 
+        <!-- Mobile Card View -->
         <div id="leaderboard-cards-container" class="space-y-4 md:hidden"></div>
 
+        <!-- Desktop Table View -->
         <div class="overflow-x-auto hidden md:block">
             <table class="min-w-full divide-y divide-gray-700 leaderboard-table">
                 <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
@@ -520,11 +524,15 @@ function renderDataAnalysisTab() {
         <div class="space-y-6">
             <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2">データ分析ダッシュボード</h2>
             
+            <!-- Stat Cards Row -->
             <div id="stat-cards-container" class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
-                </div>
+                <!-- Populated by JS -->
+            </div>
             
+            <!-- Top 3 Players -->
             <div id="top-3-container" class="cyber-card p-4 sm:p-6"></div>
 
+            <!-- Charts Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="cyber-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
                     <h3 class="cyber-header text-xl font-bold mb-4 text-center">雀士スタイル分析</h3>
@@ -1019,6 +1027,7 @@ window.displayPlayerStats = (playerId) => {
             <h3 class="cyber-header text-3xl font-bold text-blue-400">${player.name}</h3>
         </div>
 
+        <!-- Stat Cards -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center mb-6">
             <div class="cyber-card p-3"><p class="text-sm text-gray-400">合計Pt</p><p class="text-2xl font-bold ${playerStats.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${playerStats.totalPoints.toFixed(1)}</p><p class="text-xs text-gray-500 mt-1">全体 ${totalPointsRank.total}人中 ${totalPointsRank.rank}位</p></div>
             <div class="cyber-card p-3"><p class="text-sm text-gray-400">平均着順</p><p class="text-2xl font-bold">${playerStats.avgRank.toFixed(2)}</p><p class="text-xs text-gray-500 mt-1">全体 ${avgRankRank.total}人中 ${avgRankRank.rank}位</p></div>
@@ -1813,6 +1822,7 @@ window.openScoreInputModal = (index) => {
     const modalHtml = `
         <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">半荘 #${index + 1} スコア入力</h3>
         <div class="grid md:grid-cols-2 gap-4">
+            <!-- Score Inputs -->
             <div class="space-y-3">
                 ${selectedPlayers.map(p => `
                     <div>
@@ -1836,6 +1846,7 @@ window.openScoreInputModal = (index) => {
                     <button onclick="openPenaltyModal(${index})" class="cyber-btn-red text-sm px-3 py-2 rounded-md w-full"><i class="fas fa-exclamation-triangle mr-2"></i>ペナルティを追加</button>
                 </div>
             </div>
+            <!-- Numeric Keypad -->
             <div class="grid grid-cols-3 gap-2">
                 ${[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '00', '000'].map(key => `
                     <button onclick="keypadInput('${key}')" class="cyber-btn aspect-square text-xl md:text-2xl font-bold">${key}</button>
@@ -2666,7 +2677,10 @@ function renderTrophyTab() {
     if (!container) return;
     container.innerHTML = `
         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <h2 class="cyber-header text-2xl font-bold text-blue-400">トロフィー</h2>
+            <div class="flex items-center gap-2">
+                <h2 class="cyber-header text-2xl font-bold text-blue-400">トロフィー</h2>
+                <span id="trophy-helper-text" class="text-xs text-gray-400 hidden"></span>
+            </div>
             <div class="flex items-center gap-4">
                 <select id="trophy-year-filter" onchange="window.updateTrophyPage()" class="rounded-md p-1"></select>
                 <select id="trophy-player-filter" onchange="window.updateTrophyPage()" class="rounded-md p-1"></select>
@@ -2680,8 +2694,9 @@ window.updateTrophyPage = function() {
     const container = document.getElementById('trophy-list-container');
     const yearSelect = document.getElementById('trophy-year-filter');
     const playerSelect = document.getElementById('trophy-player-filter');
+    const helperText = document.getElementById('trophy-helper-text');
 
-    if (!container || !yearSelect || !playerSelect) return;
+    if (!container || !yearSelect || !playerSelect || !helperText) return;
 
     // Preserve current selection before repopulating
     const currentYear = yearSelect.value;
@@ -2693,11 +2708,28 @@ window.updateTrophyPage = function() {
 
     // Update select elements' innerHTML
     yearSelect.innerHTML = `<option value="all" ${currentYear === 'all' || !currentYear ? 'selected' : ''}>全期間</option>${yearOptions}`;
-    playerSelect.innerHTML = `<option value="all" ${currentPlayer === 'all' || !currentPlayer ? 'selected' : ''}>全選択</option>${playerOptions}`;
+    
+    playerSelect.innerHTML = `
+        <option value="">雀士を選択してください</option>
+        <option value="all" ${currentPlayer === 'all' ? 'selected' : ''}>全員の獲得状況</option>
+        ${playerOptions}
+    `;
+    // Restore selection if it still exists
+    if (currentPlayer) {
+        playerSelect.value = currentPlayer;
+    }
 
     // Get the final filter values
     const yearFilter = yearSelect.value;
     const playerFilter = playerSelect.value;
+
+    // Show/hide helper text
+    if (playerFilter === 'all') {
+        helperText.textContent = 'タップすると、各トロフィーの獲得者を確認できます。';
+        helperText.classList.remove('hidden');
+    } else {
+        helperText.classList.add('hidden');
+    }
 
     // Filter games based on the selected year
     const filteredGames = games.filter(game => {
@@ -2720,19 +2752,27 @@ window.updateTrophyPage = function() {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 ${trophies.map(trophy => {
                     let isAchieved = false;
-                    // Check achievement based on the player filter
-                    if (playerFilter === 'all') {
+                    let cardOnClick = '';
+
+                    // Handle different filter states
+                    if (playerFilter === '') { // "Please select a player" state
+                        isAchieved = false;
+                    } else if (playerFilter === 'all') { // "Everyone's status" state
                         isAchieved = Object.values(playerTrophies).some(p => p[trophy.id]);
-                    } else {
+                        if (isAchieved) {
+                             cardOnClick = `onclick="showTrophyAchievers('${trophy.id}', '${trophy.name.replace(/'/g, "\\'")}')"`;
+                        }
+                    } else { // Specific player selected
                         isAchieved = playerTrophies[playerFilter]?.[trophy.id] || false;
                     }
+                    
                     const secretClass = trophy.secret ? 'secret' : '';
                     const trophyName = (trophy.secret && !isAchieved) ? '？？？' : trophy.name;
-                    const trophyDesc = (trophy.secret && !isAchieved) ? '条件を満たすと開示されます' : trophy.desc;
+                    const trophyDesc = (trophy.secret && !isAchieved) ? '条件を満たすと解放できます' : trophy.desc;
                     const trophyIcon = (trophy.secret && !isAchieved) ? 'fa-question-circle' : trophy.icon;
 
                     return `
-                    <div class="trophy-card p-4 flex items-center gap-4 rounded-lg rank-${rank} ${isAchieved ? 'achieved' : ''} ${secretClass}">
+                    <div class="trophy-card p-4 flex items-center gap-4 rounded-lg rank-${rank} ${isAchieved ? 'achieved' : ''} ${secretClass} ${cardOnClick ? 'cursor-pointer' : ''}" ${cardOnClick}>
                         <i class="fas ${trophyIcon} fa-3x w-12 text-center trophy-icon"></i>
                         <div>
                             <h4 class="font-bold text-lg">${trophyName}</h4>
@@ -2746,6 +2786,33 @@ window.updateTrophyPage = function() {
     });
     container.innerHTML = html;
 }
+
+window.showTrophyAchievers = (trophyId, trophyName) => {
+    const achievers = users.filter(u => playerTrophies[u.id]?.[trophyId]);
+
+    if (achievers.length === 0) {
+        showModalMessage(`「${trophyName}」の獲得者はいません。`);
+        return;
+    }
+
+    const achieversHtml = achievers.map(user => {
+        const photoHtml = getPlayerPhotoHtml(user.id, 'w-10 h-10');
+        return `<div class="flex items-center gap-3 p-2 bg-gray-900 rounded-md">
+                    ${photoHtml}
+                    <span class="font-medium">${user.name}</span>
+                </div>`;
+    }).join('');
+
+    const modalContent = `
+        <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">トロフィー獲得者: ${trophyName}</h3>
+        <div class="space-y-2 max-h-60 overflow-y-auto">${achieversHtml}</div>
+        <div class="flex justify-end mt-6">
+            <button onclick="closeModal()" class="cyber-btn px-4 py-2">閉じる</button>
+        </div>
+    `;
+
+    showModal(modalContent);
+};
 
 function checkAllTrophies(targetGames, currentStats) {
     playerTrophies = {};
