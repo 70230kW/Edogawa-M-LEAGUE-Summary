@@ -1,9 +1,9 @@
 import { state, resetGame, addHanchan, deleteHanchan, saveScoresFromModal, savePartialData } from './state.js';
-import { db, storage } from './firebase.js'; // 修正: 新しいfirebase.jsから読み込む
+import { db, storage } from './main.js'; // ★★★ 修正箇所: firebase.js -> main.js に変更
 import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import * as ui from './ui.js';
-import { getGameDataFromForm } from './utils.js';
+import { getGameDataFromForm, calculateHanchanRanksAndPoints } from './utils.js';
 
 /**
  * すべてのイベントリスナーを初期化する
