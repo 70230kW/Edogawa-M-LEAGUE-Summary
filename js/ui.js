@@ -1028,20 +1028,45 @@ export function updateDataAnalysisCharts() {
     }
 
     // Radar Chart
+    const radarLabels = ['平均素点', 'トップ率', '連対率', 'ラス回避率', '平均順位'];
+    const radarStatKeys = ['avgRawScore', 'topRate', 'rentaiRate', 'lastRate', 'avgRank'];
+    const minMax = {};
+    radarStatKeys.forEach(key => {
+        const values = rankedUsers.map(u => u[key]);
+        minMax[key] = { min: Math.min(...values), max: Math.max(...values) };
+    });
+
+    const normalize = (value, key) => {
+        const { min, max } = minMax[key];
+        if (max === min) return 50;
+        if (key === 'lastRate' || key === 'avgRank') {
+            return 100 * ((max - value) / (max - min));
+        }
+        return 100 * ((value - min) / (max - min));
+    };
+
     const radarData = {
-        labels: ['平均素点', 'トップ率', '連対率', 'ラス回避率', '平均順位'],
+        labels: radarLabels,
         datasets: allPlayers.map((player, index) => {
             const stats = state.cachedStats[player.id];
             return {
                 label: player.name,
-                data: [stats.avgRawScore, stats.topRate, stats.rentaiRate, 100 - stats.lastRate, stats.avgRank],
+                data: radarStatKeys.map(key => normalize(stats[key], key)),
                 borderColor: colors[index % colors.length],
                 backgroundColor: colors[index % colors.length] + '33',
             };
         })
     };
     if (state.charts.playerRadarChart) state.charts.playerRadarChart.destroy();
-    state.charts.playerRadarChart = new Chart(document.getElementById('player-radar-chart'), { type: 'radar', data: radarData, options: { /* ... options ... */ } });
+    state.charts.playerRadarChart = new Chart(document.getElementById('player-radar-chart'), {
+        type: 'radar',
+        data: radarData,
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#c9d1d9' }}},
+            scales: { r: { angleLines: { color: '#30363d' }, grid: { color: '#30363d' }, pointLabels: { color: '#c9d1d9', font: { size: 14 }}, suggestedMin: 0, suggestedMax: 100, ticks: { display: false }}}
+        }
+    });
 
     // Point History Chart
     const dateStrings = state.games.map(g => g.gameDate.split('(')[0]);
@@ -1053,7 +1078,7 @@ export function updateDataAnalysisCharts() {
         fill: false,
     }));
     if (state.charts.pointHistoryChart) state.charts.pointHistoryChart.destroy();
-    state.charts.pointHistoryChart = new Chart(document.getElementById('point-history-chart'), { type: 'line', data: { labels: fullTimeline, datasets: pointHistoryDatasets }, options: { /* ... options ... */ } });
+    state.charts.pointHistoryChart = new Chart(document.getElementById('point-history-chart'), { type: 'line', data: { labels: fullTimeline, datasets: pointHistoryDatasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } } });
 
     // Bar Chart
     const barChartMetricSelect = document.getElementById('bar-chart-metric-select');
@@ -1075,7 +1100,7 @@ export function updateDataAnalysisCharts() {
                 backgroundColor: sortedBarUsers.map((u, i) => colors[i % colors.length] + 'AA'),
             }]
         },
-        options: { indexAxis: 'y' }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#c9d1d9' }, grid: { color: '#30363d' } } } }
     });
 }
 
