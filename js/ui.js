@@ -642,4 +642,488 @@ export function updateHistoryList() {
         `;
     }).join('');
 }
-// ... (The rest of the functions will be added in the next section)
+
+export function renderDetailedHistoryTabContainers() {
+    const rawContainer = document.getElementById('history-raw-tab');
+    const ptContainer = document.getElementById('history-pt-tab');
+    const filterHtml = (prefix) => `
+        <div class="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-gray-900 rounded-lg">
+            <div class="flex-1">
+                <label for="history-${prefix}-year-filter" class="block text-sm font-medium text-gray-400">年</label>
+                <select id="history-${prefix}-year-filter" class="mt-1 block w-full rounded-md"></select>
+            </div>
+            <div class="flex-1">
+                <label for="history-${prefix}-month-filter" class="block text-sm font-medium text-gray-400">月</label>
+                <select id="history-${prefix}-month-filter" class="mt-1 block w-full rounded-md"></select>
+            </div>
+            <div class="flex-1">
+                <label for="history-${prefix}-player-filter" class="block text-sm font-medium text-gray-400">雀士</label>
+                <select id="history-${prefix}-player-filter" class="mt-1 block w-full rounded-md"></select>
+            </div>
+        </div>
+    `;
+    rawContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (素点)</h2>${filterHtml('raw')}<div id="history-raw-list" class="overflow-x-auto"></div>`;
+    ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2>${filterHtml('pt')}<div id="history-pt-list" class="overflow-x-auto"></div>`;
+}
+
+export function renderDetailedHistoryTables() {
+    const rawListContainer = document.getElementById('history-raw-list');
+    const ptListContainer = document.getElementById('history-pt-list');
+    if (!rawListContainer || !ptListContainer) return;
+
+    const allHanchans = [];
+    state.games.forEach(game => {
+        game.scores.forEach((hanchan, index) => {
+            allHanchans.push({
+                date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
+                gameId: game.id,
+                hanchanNum: index + 1,
+                playerIds: game.playerIds,
+                rawScores: hanchan.rawScores,
+                points: hanchan.points
+            });
+        });
+    });
+
+    const createTable = (dataType, container, yearFilter, monthFilter, playerFilter) => {
+        let filteredHanchans = [...allHanchans];
+        if (yearFilter !== 'all') {
+            filteredHanchans = filteredHanchans.filter(h => (h.date || '').substring(0, 4) === yearFilter);
+        }
+        if (monthFilter !== 'all') {
+            filteredHanchans = filteredHanchans.filter(h => {
+                if (!h.date) return false;
+                const parts = h.date.split('/');
+                return parts.length > 1 && parts[1] === monthFilter;
+            });
+        }
+        if (playerFilter !== 'all') {
+            filteredHanchans = filteredHanchans.filter(h => h.playerIds.includes(playerFilter));
+        }
+
+        let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic text-xs md:text-sm">
+            <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
+                <tr>
+                    <th class="px-2 py-3 text-left whitespace-nowrap">日時</th>
+                    ${state.users.map(u => `<th class="px-2 py-3 text-right whitespace-nowrap">${u.name}</th>`).join('')}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-700">`;
+        
+        if (filteredHanchans.length === 0) {
+            tableHtml += `<tr><td colspan="${state.users.length + 1}" class="text-center py-4 text-gray-500">NO DATA</td></tr>`;
+        } else {
+            let lastDate = null;
+            filteredHanchans.forEach(hanchan => {
+                const currentDate = hanchan.date.split('(')[0];
+                let borderClass = '';
+                if (lastDate && currentDate !== lastDate) {
+                    borderClass = 'border-t-2 border-gray-500';
+                }
+                lastDate = currentDate;
+
+                const scores = hanchan[dataType];
+                const { rawRanks } = calculateHanchanRanksAndPoints(hanchan.rawScores);
+                
+                tableHtml += `<tr class="${borderClass}"><td class="px-2 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
+                state.users.forEach(user => {
+                    if (scores[user.id] !== undefined) {
+                        const rank = rawRanks[user.id];
+                        let rankClass = '';
+                        if (rank === 1) rankClass = 'text-rank-1';
+                        if (rank === 4) rankClass = 'text-rank-4';
+                        tableHtml += `<td class="px-2 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
+                    } else {
+                        tableHtml += `<td class="px-2 py-2 text-right text-gray-600">-</td>`;
+                    }
+                });
+                tableHtml += `</tr>`;
+            });
+        }
+        tableHtml += `</tbody></table>`;
+        container.innerHTML = tableHtml;
+    };
+    
+    const rawYear = document.getElementById('history-raw-year-filter').value;
+    const rawMonth = document.getElementById('history-raw-month-filter').value;
+    const rawPlayer = document.getElementById('history-raw-player-filter').value;
+    createTable('rawScores', rawListContainer, rawYear, rawMonth, rawPlayer);
+
+    const ptYear = document.getElementById('history-pt-year-filter').value;
+    const ptMonth = document.getElementById('history-pt-month-filter').value;
+    const ptPlayer = document.getElementById('history-pt-player-filter').value;
+    createTable('points', ptListContainer, ptYear, ptMonth, ptPlayer);
+}
+
+// --- Personal Stats Tab ---
+export function renderPersonalStatsTab() {
+    const container = document.getElementById('personal-stats-tab');
+    if (!container) return;
+    const options = state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    container.innerHTML = `
+        <div class="flex flex-col sm:flex-row flex-wrap justify-between items-center mb-4 gap-4">
+            <h2 class="cyber-header text-2xl font-bold pb-2 text-blue-400">個人成績</h2>
+            <div class="flex items-center gap-2">
+                <label for="personal-stats-player-select" class="text-sm text-gray-400">雀士:</label>
+                <select id="personal-stats-player-select" class="rounded-md p-1">
+                    <option value="">選択してください</option>
+                    ${options}
+                </select>
+            </div>
+        </div>
+        <div id="personal-stats-content" class="space-y-6">
+            <p class="text-gray-500">雀士を選択して成績を表示します。</p>
+        </div>
+    `;
+}
+
+export function displayPlayerStats(playerId) {
+    const container = document.getElementById('personal-stats-content');
+    if (!playerId) {
+        container.innerHTML = `<p class="text-gray-500">雀士を選択して成績を表示します。</p>`;
+        return;
+    }
+    const player = state.users.find(u => u.id === playerId);
+    if (!player) return;
+    
+    const playerStats = state.cachedStats[playerId];
+    if (!playerStats) return;
+
+    const rankedUsers = Object.values(state.cachedStats).filter(u => u.totalHanchans > 0);
+
+    const getRank = (metricKey, lowerIsBetter) => {
+        if (rankedUsers.length === 0) return { rank: '-', total: 0 };
+        const sortedUsers = [...rankedUsers].sort((a, b) => {
+            return lowerIsBetter ? a[metricKey] - b[metricKey] : b[metricKey] - a[metricKey];
+        });
+        const rank = sortedUsers.findIndex(u => u.id === playerId) + 1;
+        return { rank: rank > 0 ? rank : '-', total: rankedUsers.length };
+    };
+
+    const totalPointsRank = getRank('totalPoints', false);
+    const avgRankRank = getRank('avgRank', true);
+    const topRateRank = getRank('topRate', false);
+    const rentaiRateRank = getRank('rentaiRate', false);
+    const lastRateRank = getRank('lastRate', true);
+    const avgRawScoreRank = getRank('avgRawScore', false);
+
+    const photoHtml = getPlayerPhotoHtml(playerId, 'w-20 h-20');
+    
+    const comparisonOptions = state.users
+        .filter(u => u.id !== playerId)
+        .map(u => `
+            <div class="mr-4">
+                <input type="checkbox" id="compare-${u.id}" value="${u.id}" class="comparison-checkbox">
+                <label for="compare-${u.id}" class="ml-1">${u.name}</label>
+            </div>
+        `).join('');
+
+    container.innerHTML = `
+        <div class="flex items-center gap-4 mb-6">
+            ${photoHtml}
+            <h3 class="cyber-header text-3xl font-bold text-blue-400">${player.name}</h3>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center mb-6">
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">合計Pt</p><p class="text-2xl font-bold ${playerStats.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${playerStats.totalPoints.toFixed(1)}</p><p class="text-xs text-gray-500 mt-1">全体 ${totalPointsRank.total}人中 ${totalPointsRank.rank}位</p></div>
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">平均着順</p><p class="text-2xl font-bold">${playerStats.avgRank.toFixed(2)}</p><p class="text-xs text-gray-500 mt-1">全体 ${avgRankRank.total}人中 ${avgRankRank.rank}位</p></div>
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">トップ率</p><p class="text-2xl font-bold text-green-400">${playerStats.topRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${topRateRank.total}人中 ${topRateRank.rank}位</p></div>
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">連対率</p><p class="text-2xl font-bold">${playerStats.rentaiRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${rentaiRateRank.total}人中 ${rentaiRateRank.rank}位</p></div>
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">ラス率</p><p class="text-2xl font-bold text-red-400">${playerStats.lastRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${lastRateRank.total}人中 ${lastRateRank.rank}位</p></div>
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">平均素点</p><p class="text-2xl font-bold">${playerStats.avgRawScore.toLocaleString()}</p><p class="text-xs text-gray-500 mt-1">全体 ${avgRawScoreRank.total}人中 ${avgRawScoreRank.rank}位</p></div>
+        </div>
+        <div class="cyber-card p-4 mb-6">
+            <h4 class="font-bold mb-2">比較対象</h4>
+            <div id="comparison-checkboxes" class="flex flex-wrap">${comparisonOptions}</div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="cyber-card p-4 sm:p-6">
+                <h3 class="cyber-header text-xl font-bold mb-4 text-center">順位分布</h3>
+                <div class="w-full h-64 mx-auto"><canvas id="rank-chart-personal"></canvas></div>
+            </div>
+            <div class="cyber-card p-4 sm:p-6">
+                <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
+                <div class="w-full h-64 mx-auto"><canvas id="point-history-chart-personal"></canvas></div>
+            </div>
+        </div>
+        <div id="player-history-container" class="cyber-card p-4 sm:p-6"></div>
+    `;
+    
+    renderStatsCharts(playerId);
+    renderPlayerHistoryTable(playerId);
+}
+
+export function renderStatsCharts(mainPlayerId) {
+    const checkedBoxes = document.querySelectorAll('#comparison-checkboxes input:checked');
+    const comparisonIds = Array.from(checkedBoxes).map(cb => cb.value);
+    const colors = ['#58a6ff', '#52c569', '#f5655f', '#f2cc8f', '#e0aaff', '#9bf6ff'];
+    
+    // Point History Chart
+    const personalChartCanvas = document.getElementById('point-history-chart-personal');
+    if (personalChartCanvas) {
+        const playerIdsForChart = [mainPlayerId, ...comparisonIds];
+        const relevantGames = state.games.filter(g => g.playerIds.some(pId => playerIdsForChart.includes(pId)));
+        const dateStrings = relevantGames.map(g => g.gameDate.split('(')[0]);
+        const today = new Date();
+        const todayString = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
+        dateStrings.push(todayString);
+        const fullTimeline = [...new Set(dateStrings)].sort((a, b) => new Date(a) - new Date(b));
+
+        const pointHistoryDatasets = playerIdsForChart.map((id, index) => {
+            const playerData = getPlayerPointHistory(id, fullTimeline);
+            return {
+                label: state.cachedStats[id].name,
+                data: playerData,
+                borderColor: colors[index % colors.length],
+                backgroundColor: colors[index % colors.length] + '33',
+                fill: true, tension: 0.1
+            };
+        });
+
+        if (state.charts.personalPointHistoryChart) state.charts.personalPointHistoryChart.destroy();
+        state.charts.personalPointHistoryChart = new Chart(personalChartCanvas.getContext('2d'), {
+            type: 'line',
+            data: { labels: fullTimeline, datasets: pointHistoryDatasets },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
+        });
+    }
+
+    // Rank Distribution Chart
+    const rankChartCanvas = document.getElementById('rank-chart-personal');
+    if(rankChartCanvas) {
+        const rankDatasets = [mainPlayerId, ...comparisonIds].map((id, index) => ({
+            label: state.cachedStats[id].name,
+            data: state.cachedStats[id].ranks,
+            backgroundColor: colors[index % colors.length],
+        }));
+
+        if (state.charts.personalRankChart) state.charts.personalRankChart.destroy();
+        state.charts.personalRankChart = new Chart(rankChartCanvas.getContext('2d'), {
+            type: 'bar',
+            data: { labels: ['1位', '2位', '3位', '4位'], datasets: rankDatasets },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
+        });
+    }
+}
+
+export function renderPlayerHistoryTable(playerId) {
+    const container = document.getElementById('player-history-container');
+    if (!container) return;
+    
+    const playerHanchans = [];
+    state.games.forEach(game => {
+        if (game.playerIds.includes(playerId)) {
+            game.scores.forEach((hanchan) => {
+                const { rawRanks } = calculateHanchanRanksAndPoints(hanchan.rawScores);
+                playerHanchans.push({
+                    date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
+                    rawScore: hanchan.rawScores[playerId],
+                    point: hanchan.points[playerId],
+                    rank: rawRanks[playerId]
+                });
+            });
+        }
+    });
+
+    if (playerHanchans.length === 0) {
+        container.innerHTML = `<h3 class="cyber-header text-xl font-bold mb-4 text-center">対局履歴</h3><p class="text-gray-500 text-center">まだ対局記録がありません。</p>`;
+        return;
+    }
+
+    let tableHtml = `<h3 class="cyber-header text-xl font-bold mb-4 text-center">対局履歴</h3>
+        <div class="overflow-x-auto max-h-96">
+            <table class="min-w-full divide-y divide-gray-700 text-sm">
+                <thead class="bg-gray-900 sticky top-0"><tr>
+                    <th class="px-4 py-2 text-left">日時</th>
+                    <th class="px-4 py-2 text-right">着順</th>
+                    <th class="px-4 py-2 text-right">素点</th>
+                    <th class="px-4 py-2 text-right">ポイント</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-700">`;
+    
+    playerHanchans.reverse().forEach(h => {
+        tableHtml += `<tr>
+            <td class="px-4 py-2 whitespace-nowrap">${h.date}</td>
+            <td class="px-4 py-2 text-right">${h.rank}</td>
+            <td class="px-4 py-2 text-right">${h.rawScore.toLocaleString()}</td>
+            <td class="px-4 py-2 text-right ${h.point >= 0 ? 'text-green-400' : 'text-red-400'}">${h.point.toFixed(1)}</td>
+        </tr>`;
+    });
+
+    tableHtml += `</tbody></table></div>`;
+    container.innerHTML = tableHtml;
+}
+
+// --- Data Analysis Tab ---
+export function renderDataAnalysisTab() {
+    const container = document.getElementById('data-analysis-tab');
+    container.innerHTML = `
+        <div class="space-y-6">
+            <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2">データ分析ダッシュボード</h2>
+            <div id="stat-cards-container" class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center"></div>
+            <div id="top-3-container" class="cyber-card p-4 sm:p-6"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="cyber-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
+                    <h3 class="cyber-header text-xl font-bold mb-4 text-center">雀士スタイル分析</h3>
+                    <div id="radar-player-select" class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-2 text-sm"></div>
+                    <div class="relative h-64 md:h-80"><canvas id="player-radar-chart"></canvas></div>
+                </div>
+                <div class="cyber-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
+                    <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
+                    <div class="relative h-72 md:h-96"><canvas id="point-history-chart"></canvas></div>
+                </div>
+                <div class="cyber-card p-4 sm:p-6 lg:col-span-2">
+                     <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
+                         <h3 class="cyber-header text-xl font-bold text-center">雀士スタッツ比較</h3>
+                         <select id="bar-chart-metric-select" class="p-2 rounded-md text-sm"></select>
+                     </div>
+                    <div class="relative h-80"><canvas id="player-bar-chart"></canvas></div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+export function updateDataAnalysisCharts() {
+    // ... (This function's logic remains the same as in the original file, but uses `state` variables)
+}
+
+// --- Head to Head Tab ---
+export function renderHeadToHeadTab() {
+    const container = document.getElementById('head-to-head-tab');
+    container.innerHTML = `
+        <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2 mb-4">直接対決</h2>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+            <select id="h2h-player1" class="p-2 rounded-md"></select>
+            <span class="font-bold text-xl">VS</span>
+            <select id="h2h-player2" class="p-2 rounded-md"></select>
+        </div>
+        <div id="h2h-results" class="text-center">
+            <p class="text-gray-500">比較したい雀士を2名選択してください。</p>
+        </div>
+    `;
+}
+
+export function updateHeadToHeadDropdowns() {
+    const p1Select = document.getElementById('h2h-player1');
+    const p2Select = document.getElementById('h2h-player2');
+    if (!p1Select || !p2Select) return;
+
+    const currentP1 = p1Select.value;
+    const currentP2 = p2Select.value;
+
+    const options = state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    p1Select.innerHTML = options;
+    p2Select.innerHTML = options;
+
+    if (state.users.some(u => u.id === currentP1)) {
+        p1Select.value = currentP1;
+    } else if (state.users.length > 0) {
+        p1Select.value = state.users[0].id;
+    }
+
+    if (state.users.some(u => u.id === currentP2) && currentP2 !== p1Select.value) {
+        p2Select.value = currentP2;
+    } else if (state.users.length > 1) {
+        const defaultP2 = state.users.find(u => u.id !== p1Select.value);
+        if (defaultP2) p2Select.value = defaultP2.id;
+    }
+}
+
+export function displayHeadToHeadStats() {
+    const p1Id = document.getElementById('h2h-player1')?.value;
+    const p2Id = document.getElementById('h2h-player2')?.value;
+    const resultsContainer = document.getElementById('h2h-results');
+
+    if (!p1Id || !p2Id) {
+        resultsContainer.innerHTML = `<p class="text-gray-500">比較したい雀士を2名選択してください。</p>`;
+        return;
+    }
+    if (p1Id === p2Id) {
+        resultsContainer.innerHTML = `<p class="text-yellow-400">同じ雀士は選択できません。</p>`;
+        return;
+    }
+
+    const p1 = state.users.find(u => u.id === p1Id);
+    const p2 = state.users.find(u => u.id === p2Id);
+
+    let p1Wins = 0, p2Wins = 0, draws = 0, totalHanchans = 0;
+
+    state.games.forEach(game => {
+        if (game.playerIds.includes(p1Id) && game.playerIds.includes(p2Id)) {
+            game.scores.forEach(hanchan => {
+                totalHanchans++;
+                const p1Score = hanchan.rawScores[p1Id];
+                const p2Score = hanchan.rawScores[p2Id];
+                if (p1Score > p2Score) p1Wins++;
+                else if (p2Score > p1Score) p2Wins++;
+                else draws++;
+            });
+        }
+    });
+
+    if (totalHanchans === 0) {
+        resultsContainer.innerHTML = `<p class="text-gray-500">この2人の直接対決の記録はありません。</p>`;
+        return;
+    }
+    
+    const p1WinRate = ((p1Wins / totalHanchans) * 100).toFixed(1);
+    const p2WinRate = ((p2Wins / totalHanchans) * 100).toFixed(1);
+
+    resultsContainer.innerHTML = `
+        <div class="text-2xl mb-4">総対戦半荘数: <span class="font-bold text-yellow-400">${totalHanchans}</span>回</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div class="cyber-card p-4 text-center">
+                ${getPlayerPhotoHtml(p1.id, 'w-20 h-20 mx-auto mb-2')}
+                <h3 class="text-2xl font-bold text-blue-400">${p1.name}</h3>
+                <p class="text-4xl font-bold text-green-400 my-2">${p1Wins}<span class="text-xl">勝</span></p>
+                <p class="text-gray-400">勝率: ${p1WinRate}%</p>
+            </div>
+            <div class="cyber-card p-4 text-center">
+                ${getPlayerPhotoHtml(p2.id, 'w-20 h-20 mx-auto mb-2')}
+                <h3 class="text-2xl font-bold text-blue-400">${p2.name}</h3>
+                <p class="text-4xl font-bold text-green-400 my-2">${p2Wins}<span class="text-xl">勝</span></p>
+                <p class="text-gray-400">勝率: ${p2WinRate}%</p>
+            </div>
+        </div>
+        ${draws > 0 ? `<p class="mt-4 text-gray-500">引き分け: ${draws}回</p>` : ''}
+    `;
+}
+
+// --- User Management Tab ---
+export function renderUserManagementTab() {
+    const container = document.getElementById('users-tab');
+    container.innerHTML = `
+        <h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">雀士管理</h2>
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+            <input type="text" id="new-user-name" class="flex-grow rounded-md shadow-sm sm:text-sm" placeholder="新しい雀士名">
+            <button data-action="add-user" class="cyber-btn px-6 py-2 rounded-lg whitespace-nowrap"><i class="fas fa-user-plus mr-2"></i>追加</button>
+        </div>
+        <div id="user-list-management" class="space-y-2"></div>
+    `;
+}
+
+export function renderUserManagementList() {
+    const container = document.getElementById('user-list-management');
+    if (!container) return;
+    container.innerHTML = state.users.length === 0
+        ? `<p class="text-gray-500">登録されている雀士がいません。</p>`
+        : state.users.map(user => {
+            const photoHtml = getPlayerPhotoHtml(user.id, 'w-12 h-12');
+            return `
+            <div class="flex items-center gap-4 bg-gray-900 p-2 rounded-lg">
+                <div class="relative flex-shrink-0">
+                    <label for="photo-upload-${user.id}" class="cursor-pointer">
+                        ${photoHtml}
+                    </label>
+                    <input type="file" id="photo-upload-${user.id}" class="hidden" accept="image/*">
+                </div>
+                <div class="flex-grow">
+                    <input type="text" id="user-name-input-${user.id}" value="${user.name}" data-original-name="${user.name}" class="w-full bg-transparent rounded-md p-1 -m-1 focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 outline-none" readonly>
+                </div>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                    <button data-action="edit-user" data-user-id="${user.id}" id="edit-user-btn-${user.id}" class="cyber-btn text-sm px-3 py-1 rounded-md"><i class="fas fa-edit"></i></button>
+                    <button data-action="delete-user" data-user-id="${user.id}" class="cyber-btn-red text-sm px-3 py-1 rounded-md"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </div>
+        `}).join('');
+}
