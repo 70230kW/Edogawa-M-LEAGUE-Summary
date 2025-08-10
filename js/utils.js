@@ -1,5 +1,4 @@
 import { state } from './state.js';
-import { TROPHY_DEFINITIONS } from './constants.js';
 
 export function getGameYears() {
     const years = new Set();
