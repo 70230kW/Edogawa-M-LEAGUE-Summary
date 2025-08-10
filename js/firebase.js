@@ -1,7 +1,15 @@
+// js/firebase.js
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+// Auth: 認証関連の機能をすべてインポート
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+// Firestore: Firestore関連の機能をすべてインポート
+import { getFirestore, collection, onSnapshot, query, orderBy, addDoc, doc, updateDoc, deleteDoc, writeBatch, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// Storage: Storage関連の機能をすべてインポート
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
 // Firebaseプロジェクトの設定情報
 const firebaseConfig = {
@@ -14,8 +22,33 @@ const firebaseConfig = {
     measurementId: "G-XMYXPG06QF"
 };
 
-// Firebaseを初期化し、各サービスをエクスポート
+// Firebaseを初期化
 const app = initializeApp(firebaseConfig);
+
+// 各サービスを初期化してエクスポート
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// 他のファイルで利用するFirebaseの関数を再エクスポート
+export {
+    // Auth
+    onAuthStateChanged,
+    signInAnonymously,
+    // Firestore
+    collection,
+    onSnapshot,
+    query,
+    orderBy,
+    addDoc,
+    doc,
+    updateDoc,
+    deleteDoc,
+    writeBatch,
+    where,
+    getDocs,
+    // Storage
+    ref,
+    uploadBytes,
+    getDownloadURL
+};
