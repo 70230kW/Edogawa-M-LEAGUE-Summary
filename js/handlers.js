@@ -1,5 +1,5 @@
 import { state, resetGame, addHanchan, deleteHanchan, saveScoresFromModal, savePartialData } from './state.js';
-import { db, storage } from './main.js';
+import { db, storage } from './firebase.js'; // 修正: 新しいfirebase.jsから読み込む
 import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import * as ui from './ui.js';
@@ -205,7 +205,17 @@ function savePartialDataHandler() {
 }
 
 function showCurrentPtStatus() {
-    const gameData = getGameDataFromForm(true); // only completed
+    const settings = {
+        basePoint: Number(document.getElementById('base-point').value),
+        returnPoint: Number(document.getElementById('return-point').value),
+        uma: [
+            Number(document.getElementById('uma-1').value),
+            Number(document.getElementById('uma-2').value),
+            Number(document.getElementById('uma-3').value),
+            Number(document.getElementById('uma-4').value)
+        ]
+    };
+    const gameData = getGameDataFromForm(true, settings); 
     if (gameData.error) {
         ui.showModalMessage(gameData.error);
         return;
@@ -237,8 +247,17 @@ async function calculateAndSave() {
         ui.showModalMessage("対局日を入力してください。");
         return;
     }
-
-    const gameData = getGameDataFromForm(false);
+    const settings = {
+        basePoint: Number(document.getElementById('base-point').value),
+        returnPoint: Number(document.getElementById('return-point').value),
+        uma: [
+            Number(document.getElementById('uma-1').value),
+            Number(document.getElementById('uma-2').value),
+            Number(document.getElementById('uma-3').value),
+            Number(document.getElementById('uma-4').value)
+        ]
+    };
+    const gameData = getGameDataFromForm(false, settings);
     if (gameData.error) {
         ui.showModalMessage(gameData.error);
         return;
