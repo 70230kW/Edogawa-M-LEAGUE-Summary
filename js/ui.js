@@ -964,8 +964,7 @@ export function renderDataAnalysisTab() {
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="cyber-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
                     <h3 class="cyber-header text-xl font-bold mb-4 text-center">雀士スタイル分析</h3>
-                    <div id="radar-player-select" class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-2 text-sm"></div>
-                    <div class="relative h-64 md:h-80"><canvas id="player-radar-chart"></canvas></div>
+                    <div class="relative h-72 md:h-96"><canvas id="player-radar-chart"></canvas></div>
                 </div>
                 <div class="cyber-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
                     <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
@@ -1029,16 +1028,9 @@ export function updateDataAnalysisCharts() {
     }
 
     // Radar Chart
-    const radarPlayerSelect = document.getElementById('radar-player-select');
-    const selectedRadarPlayerIds = Array.from(radarPlayerSelect.querySelectorAll('input:checked')).map(cb => cb.value);
-    if (selectedRadarPlayerIds.length === 0) {
-        radarPlayerSelect.innerHTML = allPlayers.map(u => `
-            <label class="flex items-center cursor-pointer p-1 rounded"><input type="checkbox" value="${u.id}" class="radar-checkbox" checked><span>${u.name}</span></label>
-        `).join('');
-    }
     const radarData = {
         labels: ['平均素点', 'トップ率', '連対率', 'ラス回避率', '平均順位'],
-        datasets: allPlayers.filter(p => selectedRadarPlayerIds.includes(p.id) || selectedRadarPlayerIds.length === 0).map((player, index) => {
+        datasets: allPlayers.map((player, index) => {
             const stats = state.cachedStats[player.id];
             return {
                 label: player.name,
