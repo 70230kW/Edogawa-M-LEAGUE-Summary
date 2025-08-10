@@ -728,7 +728,8 @@ export function renderDetailedHistoryTables() {
                 hanchanNum: index + 1,
                 playerIds: game.playerIds,
                 rawScores: hanchan.rawScores,
-                points: hanchan.points
+                points: hanchan.points,
+                settings: game.settings
             });
         });
     });
@@ -771,7 +772,7 @@ export function renderDetailedHistoryTables() {
                 lastDate = currentDate;
 
                 const scores = hanchan[dataType];
-                const { rawRanks } = calculateHanchanRanksAndPoints(hanchan.rawScores);
+                const { rawRanks } = calculateHanchanRanksAndPoints(hanchan.rawScores, hanchan.settings);
                 
                 tableHtml += `<tr class="${borderClass}"><td class="px-2 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
                 state.users.forEach(user => {
@@ -961,7 +962,7 @@ export function renderPlayerHistoryTable(playerId) {
     state.games.forEach(game => {
         if (game.playerIds.includes(playerId)) {
             game.scores.forEach((hanchan) => {
-                const { rawRanks } = calculateHanchanRanksAndPoints(hanchan.rawScores);
+                const { rawRanks } = calculateHanchanRanksAndPoints(hanchan.rawScores, game.settings);
                 playerHanchans.push({
                     date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
                     rawScore: hanchan.rawScores[playerId],
