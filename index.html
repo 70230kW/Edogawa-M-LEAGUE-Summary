@@ -24,32 +24,32 @@
 
         <div class="mb-6">
             <div class="border-b border-gray-700">
-                <nav class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
-                    <button onclick="changeTab('game')" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
-                    <button onclick="changeTab('leaderboard')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
-                    <button onclick="changeTab('trophy')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">トロフィー</button>
-                    <button onclick="changeTab('data-analysis')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析</button>
-                    <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
-                    <button onclick="changeTab('history')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
-                    <button onclick="changeTab('head-to-head')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">直接対決</button>
-                    <button onclick="changeTab('history-raw')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
-                    <button onclick="changeTab('history-pt')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(PT)</button>
-                    <button onclick="changeTab('users')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">雀士管理</button>
+                <nav id="tab-navigation" class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
+                    <button data-tab="game" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
+                    <button data-tab="leaderboard" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
+                    <button data-tab="trophy" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">トロフィー</button>
+                    <button data-tab="data-analysis" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析</button>
+                    <button data-tab="personal-stats" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
+                    <button data-tab="history" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
+                    <button data-tab="head-to-head" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">直接対決</button>
+                    <button data-tab="history-raw" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
+                    <button data-tab="history-pt" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(PT)</button>
+                    <button data-tab="users" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">雀士管理</button>
                 </nav>
             </div>
         </div>
 
         <main id="main-content">
-            <div id="game-tab" class="space-y-6"></div>
-            <div id="leaderboard-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="trophy-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="data-analysis-tab" class="hidden"></div>
-            <div id="personal-stats-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="history-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="head-to-head-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="history-raw-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="history-pt-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="users-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="game-tab" class="tab-content space-y-6"></div>
+            <div id="leaderboard-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="trophy-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="data-analysis-tab" class="tab-content hidden"></div>
+            <div id="personal-stats-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="history-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="head-to-head-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="history-raw-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="history-pt-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="users-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
         </main>
     </div>
 
@@ -57,6 +57,6 @@
         <div id="modal-content" class="cyber-card p-4 sm:p-6 rounded-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto"></div>
     </div>
 
-    <script type="module" src="script.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
