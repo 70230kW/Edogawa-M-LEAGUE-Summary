@@ -4,17 +4,13 @@ import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, query, where
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import * as ui from './ui.js';
 import { getGameDataFromForm } from './utils.js';
-import { YAKUMAN_LIST, PENALTY_REASONS, YAKUMAN_INCOMPATIBILITY } from './constants.js';
 
 /**
  * すべてのイベントリスナーを初期化する
  */
 export function initializeHandlers() {
-    // 静的な要素へのイベントリスナー
     document.getElementById('tab-navigation').addEventListener('click', handleTabClick);
     document.getElementById('modal').addEventListener('click', handleModalClick);
-
-    // 動的に生成される要素はbodyからのイベント委譲で処理
     document.body.addEventListener('click', handleGlobalClick);
     document.body.addEventListener('change', handleGlobalChange);
     document.body.addEventListener('input', handleGlobalInput);
@@ -32,32 +28,31 @@ function handleTabClick(e) {
 }
 
 function handleModalClick(e) {
-    // モーダルの外側か閉じるボタンをクリックした場合にモーダルを閉じる
     if (e.target.id === 'modal' || e.target.id === 'modal-close-btn' || e.target.closest('#modal-close-btn')) {
         ui.closeModal();
     }
 }
 
 function handleGlobalChange(e) {
-    if (e.target.matches('.player-checkbox')) {
-        togglePlayerSelectionHandler(e.target);
+    const target = e.target;
+    if (target.matches('.player-checkbox')) {
+        togglePlayerSelectionHandler(target);
     }
-    if (e.target.matches('input[type="file"][id^="photo-upload-"]')) {
-        const userId = e.target.id.replace('photo-upload-', '');
-        handlePhotoUpload(userId, e.target);
+    if (target.matches('input[type="file"][id^="photo-upload-"]')) {
+        const userId = target.id.replace('photo-upload-', '');
+        handlePhotoUpload(userId, target);
     }
-    if (e.target.matches('#penalty-type-select')) {
+    if (target.matches('#penalty-type-select')) {
         ui.updatePenaltyReasons();
     }
-    if (e.target.matches('input[name="yakuman-checkbox"]')) {
+    if (target.matches('input[name="yakuman-checkbox"]')) {
         ui.updateYakumanCheckboxes();
     }
-    if (e.target.matches('.comparison-checkbox')) {
+    if (target.matches('.comparison-checkbox')) {
         const mainPlayerId = document.getElementById('personal-stats-player-select').value;
         ui.renderStatsCharts(mainPlayerId);
     }
-    // フィルター類はすべてUIの全体更新をトリガー
-    if (e.target.matches('#leaderboard-period-select, #trophy-year-filter, #trophy-player-filter, #history-year-filter, #history-month-filter, #history-player-filter, #history-raw-year-filter, #history-raw-month-filter, #history-raw-player-filter, #history-pt-year-filter, #history-pt-month-filter, #history-pt-player-filter, #personal-stats-player-select, #bar-chart-metric-select, #h2h-player1, #h2h-player2')) {
+    if (target.matches('#leaderboard-period-select, #trophy-year-filter, #trophy-player-filter, #history-year-filter, #history-month-filter, #history-player-filter, #history-raw-year-filter, #history-raw-month-filter, #history-raw-player-filter, #history-pt-year-filter, #history-pt-month-filter, #history-pt-player-filter, #personal-stats-player-select, #bar-chart-metric-select, #h2h-player1, #h2h-player2')) {
         ui.updateAllViews();
     }
 }
@@ -106,7 +101,7 @@ function handleGlobalClick(e) {
     if (action === 'edit-user') toggleEditUser(userId);
     if (action === 'delete-user') confirmDeleteUser(userId);
     if (action === 'confirm-delete-user') executeDeleteUser(userId);
-
+    
     // History Actions
     if (action === 'show-game-details') ui.showGameDetails(gameId);
     if (action === 'edit-game') editGame(gameId);
