@@ -21,6 +21,7 @@ import { state, resetGame, addHanchan, deleteHanchan, saveScoresFromModal, saveP
 import * as ui from './ui.js';
 import { getGameDataFromForm, calculateHanchanRanksAndPoints } from './utils.js';
 
+
 /**
  * すべてのイベントリスナーを初期化する
  */
