@@ -126,18 +126,13 @@ export function getPlayerPointHistory(playerId, fullTimeline) {
     return history;
 }
 
-export function calculateHanchanRanksAndPoints(scores) {
+export function calculateHanchanRanksAndPoints(scores, settings) {
     const result = { points: {}, rawRanks: {}, pointRanks: {} };
     if (Object.values(scores).some(s => s === null || s === '')) {
         return result;
     }
 
-    const basePoint = Number(document.getElementById('base-point').value);
-    const returnPoint = Number(document.getElementById('return-point').value);
-    const uma = [
-        Number(document.getElementById('uma-1').value), Number(document.getElementById('uma-2').value),
-        Number(document.getElementById('uma-3').value), Number(document.getElementById('uma-4').value)
-    ];
+    const { basePoint, returnPoint, uma } = settings;
     const oka = ((returnPoint - basePoint) * 4) / 1000;
 
     const scoreGroups = {};
@@ -186,51 +181,6 @@ export function calculateHanchanRanksAndPoints(scores) {
     });
 
     return result;
-}
-
-export function getGameDataFromForm(onlyCompleted) {
-    const basePoint = Number(document.getElementById('base-point').value);
-    const returnPoint = Number(document.getElementById('return-point').value);
-    const uma = [
-        Number(document.getElementById('uma-1').value), Number(document.getElementById('uma-2').value),
-        Number(document.getElementById('uma-3').value), Number(document.getElementById('uma-4').value)
-    ];
-
-    const processedHanchans = [];
-
-    for (let i = 0; i < state.hanchanScores.length; i++) {
-        const hanchan = state.hanchanScores[i];
-        const scores = hanchan.rawScores;
-        const isComplete = Object.values(scores).every(s => s !== null && s !== '');
-
-        if (!isComplete) {
-            if (onlyCompleted) continue;
-            return { error: `半荘 #${i + 1} の全ての素点を入力してください。` };
-        }
-
-        const total = Object.values(scores).reduce((sum, score) => sum + Number(score), 0);
-        if (Math.round(total) !== basePoint * 4) {
-            return { error: `半荘 #${i + 1} の合計点が ${basePoint * 4} になっていません。(現在: ${total})` };
-        }
-        processedHanchans.push(hanchan);
-    }
-
-    if (processedHanchans.length === 0 && onlyCompleted) {
-        return { error: "ポイント計算できる完成した半荘がありません。" };
-    }
-
-    const totalPoints = {};
-    state.selectedPlayers.forEach(p => totalPoints[p.id] = 0);
-
-    processedHanchans.forEach(hanchan => {
-        const { points } = calculateHanchanRanksAndPoints(hanchan.rawScores);
-        hanchan.points = points;
-        Object.keys(points).forEach(playerId => {
-            totalPoints[playerId] += points[playerId];
-        });
-    });
-
-    return { hanchanData: processedHanchans, totalPoints, settings: { basePoint, returnPoint, uma } };
 }
 
 export function checkAllTrophies(targetGames, currentStats) {
@@ -351,7 +301,7 @@ export function checkAllTrophies(targetGames, currentStats) {
             if (monthlyHanchans[month] >= 10) {
                 const gamesInMonth = playerGames.filter(g => g.gameDate && g.gameDate.startsWith(month));
                 return !gamesInMonth.some(g => g.scores.some(s => {
-                    const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores);
+                    const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores, g.settings);
                     return rawRanks[user.id] === 4;
                 }));
             }
@@ -398,12 +348,12 @@ export function checkAllTrophies(targetGames, currentStats) {
         state.playerTrophies[user.id].daisuushii = achievedYakuman.has('大四喜');
         
         let allPlayerHanchans = [];
-        playerGames.forEach(g => g.scores.forEach(s => allPlayerHanchans.push(s)));
+        playerGames.forEach(g => g.scores.forEach(s => allPlayerHanchans.push({scores: s.rawScores, settings: g.settings})));
         if (allPlayerHanchans.length >= 100) {
             const recent100Hanchans = allPlayerHanchans.slice(-100);
             let totalRank = 0;
             recent100Hanchans.forEach(s => {
-                const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores);
+                const { rawRanks } = calculateHanchanRanksAndPoints(s.scores, s.settings);
                 totalRank += rawRanks[user.id];
             });
             state.playerTrophies[user.id].recent_100_avg_rank_1_5 = (totalRank / 100) <= 1.5;
@@ -417,7 +367,7 @@ export function checkAllTrophies(targetGames, currentStats) {
             const hadYakumanPrev = prevGame.scores.some(s => s.yakumanEvents && s.yakumanEvents.some(y => y.playerId === user.id));
             if (!hadYakumanPrev) return false;
             return game.scores.some(s => {
-                const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores);
+                const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores, game.settings);
                 return s.rawScores[user.id] < 0 && rawRanks[user.id] === 4;
             });
         });
@@ -435,8 +385,8 @@ export function checkAllTrophies(targetGames, currentStats) {
 
             return g.scores.every((s, hanchanIdx) => {
                 if (!prevGame.scores[hanchanIdx]) return false;
-                const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores);
-                const { rawRanks: prevRanks } = calculateHanchanRanksAndPoints(prevGame.scores[hanchanIdx].rawScores);
+                const { rawRanks } = calculateHanchanRanksAndPoints(s.rawScores, g.settings);
+                const { rawRanks: prevRanks } = calculateHanchanRanksAndPoints(prevGame.scores[hanchanIdx].rawScores, prevGame.settings);
                 return g.playerIds.every(pId => rawRanks[pId] + prevRanks[pId] === 5);
             });
         });
@@ -445,7 +395,7 @@ export function checkAllTrophies(targetGames, currentStats) {
             let consecutiveDifferentRanks = 0;
             for (const game of playerGames) {
                 for (const hanchan of game.scores) {
-                    const { rawRanks } = calculateHanchanRanksAndPoints(hanchan.rawScores);
+                    const { rawRanks } = calculateHanchanRanksAndPoints(hanchan.rawScores, game.settings);
                     const ranks = Object.values(rawRanks);
                     if (new Set(ranks).size === 4) {
                         consecutiveDifferentRanks++;
