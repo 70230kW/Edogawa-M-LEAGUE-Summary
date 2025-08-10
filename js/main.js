@@ -17,13 +17,6 @@ import { state, setUsers, setGames, loadSavedGameData } from './state.js';
 import { initializeHandlers } from './handlers.js';
 import { renderInitialUI, updateAllViews, showModalMessage, changeTab } from './ui.js';
 
-// ... (以降のコードは変更なし)
-
-// App Module Imports
-import { state, setUsers, setGames, loadSavedGameData } from './state.js';
-import { initializeHandlers } from './handlers.js';
-import { renderInitialUI, updateAllViews, showModalMessage, changeTab } from './ui.js';
-
 // --- App Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     initializeApplication();
