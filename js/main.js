@@ -1,29 +1,12 @@
 // Firebase Imports
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { auth, db } from './firebase.js'; // 修正: 新しいfirebase.jsから読み込む
 
 // App Module Imports
 import { state, setUsers, setGames, loadSavedGameData } from './state.js';
 import { initializeHandlers } from './handlers.js';
 import { renderInitialUI, updateAllViews, showModalMessage, changeTab } from './ui.js';
-
-// --- Firebase Initialization ---
-const firebaseConfig = {
-    apiKey: "AIzaSyBwWqWxRy5JlcQwbc5KAXRvH0swd0pOzSg",
-    authDomain: "edogawa-m-league-summary.firebaseapp.com",
-    projectId: "edogawa-m-league-summary",
-    storageBucket: "edogawa-m-league-summary.appspot.com",
-    messagingSenderId: "587593171009",
-    appId: "1:587593171009:web:b48dd5b809f2d2ce8886c0",
-    measurementId: "G-XMYXPG06QF"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-export const storage = getStorage(app); // Export for handlers.js
 
 // --- App Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
