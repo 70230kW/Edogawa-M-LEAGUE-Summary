@@ -1,7 +1,23 @@
-// Firebase Imports
-import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { auth, db } from './firebase.js'; // 修正: 新しいfirebase.jsから読み込む
+// js/main.js
+
+// Firebase関連の機能はすべて'./firebase.js'からインポートする
+import {
+    auth,
+    db,
+    onAuthStateChanged,
+    signInAnonymously,
+    collection,
+    onSnapshot,
+    query,
+    orderBy
+} from './firebase.js';
+
+// App Module Imports
+import { state, setUsers, setGames, loadSavedGameData } from './state.js';
+import { initializeHandlers } from './handlers.js';
+import { renderInitialUI, updateAllViews, showModalMessage, changeTab } from './ui.js';
+
+// ... (以降のコードは変更なし)
 
 // App Module Imports
 import { state, setUsers, setGames, loadSavedGameData } from './state.js';
