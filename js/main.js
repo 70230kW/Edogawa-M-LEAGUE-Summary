@@ -21,56 +21,48 @@ import { renderInitialUI, updateAllViews, showModalMessage, changeTab } from './
 const authStatusEl = document.getElementById('auth-status');
 
 /**
- * アプリケーションの初期化
+ * アプリケーションのエントリーポイント
  */
-async function initializeApplication() {
-    console.log("Application initialization started...");
-    authStatusEl.textContent = 'System initializing...';
+function main() {
+    console.log("Application starting...");
+    authStatusEl.textContent = 'Connecting to system...';
 
+    // 先にUIの骨格とイベントハンドラを準備
     renderInitialUI();
     initializeHandlers();
-    
-    // 認証状態の監視を開始
-    setupAuthListener();
 
-    // 匿名認証を試みる
-    try {
-        console.log("Attempting anonymous sign-in...");
-        // 既にサインインしているか確認
-        if (!auth.currentUser) {
-            await signInAnonymously(auth);
-            console.log("Anonymous sign-in request successful. Waiting for state change.");
-        } else {
-            console.log("User is already signed in.", auth.currentUser.uid);
-        }
-    } catch (error) {
-        console.error("CRITICAL: Anonymous sign-in failed.", error);
-        authStatusEl.textContent = `Auth Error: ${error.code}. Please check Firebase console settings.`;
-    }
-}
-
-/**
- * 認証状態の監視とデータリスナーの設定
- */
-function setupAuthListener() {
+    // onAuthStateChangedは認証に関するすべてのロジックの中心。
+    // ページの読み込み時に一度、その後認証状態が変化するたびに実行される。
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            console.log("Auth state changed: User is signed in.", user.uid);
+            // --- ユーザーがサインインしている場合 ---
+            console.log("Authentication successful. User UID:", user.uid);
             state.currentUser = user;
             authStatusEl.textContent = `System Online // User: ${user.isAnonymous ? 'Guest' : user.uid.substring(0, 8)}`;
             
-            // 認証が確立した後に、Firestoreのリスナーを設定
+            // ユーザーが確認できたので、安全にデータベースの監視を開始
             await setupFirestoreListeners();
 
         } else {
-            console.log("Auth state changed: User is signed out.");
-            authStatusEl.textContent = 'Waiting for authentication...';
+            // --- ユーザーがサインアウトしている場合 ---
+            console.log("User is not signed in. Attempting anonymous sign-in...");
+            authStatusEl.textContent = 'Authenticating...';
+            try {
+                // 匿名でのサインインを試みる。成功すると、再度onAuthStateChangedが呼ばれ、
+                // 上の if (user) ブロックが実行される。
+                await signInAnonymously(auth);
+            } catch (error) {
+                // これは致命的なエラー。アプリがFirebase認証に接続できないことを意味する。
+                // 最も一般的な原因は、Firebaseコンソールで「匿名認証」が有効になっていないこと。
+                console.error("CRITICAL: Anonymous sign-in failed.", error);
+                authStatusEl.textContent = `AUTH_ERROR: ${error.code}. Check Firebase settings.`;
+            }
         }
     });
 }
 
 /**
- * Firestoreのデータ変更を監視するリスナーを設定
+ * Firestoreのデータリスナーを設定する。認証後にのみ呼び出すこと。
  */
 async function setupFirestoreListeners() {
     console.log("Setting up Firestore listeners...");
@@ -110,7 +102,5 @@ async function setupFirestoreListeners() {
     }
 }
 
-// --- アプリケーションの実行 ---
-document.addEventListener('DOMContentLoaded', () => {
-    initializeApplication();
-});
+// --- DOMの準備ができたらアプリケーションを開始 ---
+document.addEventListener('DOMContentLoaded', main);
