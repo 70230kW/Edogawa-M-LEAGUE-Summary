@@ -686,6 +686,34 @@ export function renderDetailedHistoryTabContainers() {
     ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2>${filterHtml('pt')}<div id="history-pt-list" class="overflow-x-auto"></div>`;
 }
 
+export function updateDetailedHistoryTabFilters() {
+    ['raw', 'pt'].forEach(prefix => {
+        const yearSelect = document.getElementById(`history-${prefix}-year-filter`);
+        const monthSelect = document.getElementById(`history-${prefix}-month-filter`);
+        const playerSelect = document.getElementById(`history-${prefix}-player-filter`);
+        if (!yearSelect || !monthSelect || !playerSelect) return;
+
+        const currentYear = yearSelect.value;
+        const currentMonth = monthSelect.value;
+        const currentPlayer = playerSelect.value;
+
+        const yearOptions = getGameYears().map(year => `<option value="${year}">${year}年</option>`).join('');
+        yearSelect.innerHTML = `<option value="all">すべて</option>${yearOptions}`;
+        if (Array.from(yearSelect.options).some(opt => opt.value === currentYear)) yearSelect.value = currentYear;
+
+        if (monthSelect.options.length === 0) {
+            const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1).map(m => `<option value="${m}">${m}月</option>`).join('');
+            monthSelect.innerHTML = `<option value="all">すべて</option>${monthOptions}`;
+        }
+        if (Array.from(monthSelect.options).some(opt => opt.value === currentMonth)) monthSelect.value = currentMonth;
+
+        const playerOptions = state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        playerSelect.innerHTML = `<option value="all">すべて</option>${playerOptions}`;
+        if (Array.from(playerSelect.options).some(opt => opt.value === currentPlayer)) playerSelect.value = currentPlayer;
+    });
+}
+
+
 export function renderDetailedHistoryTables() {
     const rawListContainer = document.getElementById('history-raw-list');
     const ptListContainer = document.getElementById('history-pt-list');
