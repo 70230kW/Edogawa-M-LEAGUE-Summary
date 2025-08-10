@@ -19,6 +19,7 @@ export const state = {
 
 export function setUsers(newUsers) {
     state.users = newUsers;
+    // ユーザー名を日本語順でソート
     state.users.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 }
 
@@ -44,9 +45,9 @@ export function addHanchan() {
 export function deleteHanchan(index) {
     if (state.hanchanScores.length > 1) {
         state.hanchanScores.splice(index, 1);
-        return true;
+        return true; // 削除成功
     }
-    return false;
+    return false; // 削除失敗
 }
 
 export function saveScoresFromModal(index) {
@@ -75,7 +76,7 @@ export function saveScoresFromModal(index) {
     }
     
     state.hanchanScores[index].rawScores = newScores;
-    return null; // No error
+    return null; // エラーなし
 }
 
 export function savePartialData() {
@@ -98,17 +99,19 @@ export function loadSavedGameData() {
     if (!savedDataJSON) return false;
 
     const savedData = JSON.parse(savedDataJSON);
-    if (savedData.selectedPlayers && savedData.selectedPlayers.length === 4) {
+    if (savedData.selectedPlayers && savedData.selectedPlayers.length > 0) {
         state.selectedPlayers = savedData.selectedPlayers;
         state.hanchanScores = savedData.scores || [];
         
-        document.getElementById('base-point').value = savedData.basePoint;
-        document.getElementById('return-point').value = savedData.returnPoint;
-        document.getElementById('uma-1').value = savedData.uma1;
-        document.getElementById('uma-2').value = savedData.uma2;
-        document.getElementById('uma-3').value = savedData.uma3;
-        document.getElementById('uma-4').value = savedData.uma4;
-        document.getElementById('game-date').value = savedData.gameDate;
+        // UIに値を反映
+        const gameTab = document.getElementById('game-tab');
+        gameTab.querySelector('#base-point').value = savedData.basePoint;
+        gameTab.querySelector('#return-point').value = savedData.returnPoint;
+        gameTab.querySelector('#uma-1').value = savedData.uma1;
+        gameTab.querySelector('#uma-2').value = savedData.uma2;
+        gameTab.querySelector('#uma-3').value = savedData.uma3;
+        gameTab.querySelector('#uma-4').value = savedData.uma4;
+        gameTab.querySelector('#game-date').value = savedData.gameDate;
         
         if (state.hanchanScores.length === 0) {
             addHanchan();
