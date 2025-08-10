@@ -1002,11 +1002,34 @@ export function updateDataAnalysisCharts() {
             highestHanchan = { score, name: state.users.find(u=>u.id===pId)?.name, id: pId };
         }
     })));
+    const topHanchansPlayer = [...rankedUsers].sort((a, b) => b.totalHanchans - a.totalHanchans)[0];
+    
+    const dailyPoints = {};
+    state.games.forEach(g => {
+        const date = g.gameDate.split('(')[0];
+        if (!dailyPoints[date]) dailyPoints[date] = {};
+        Object.entries(g.totalPoints).forEach(([pId, pts]) => {
+            if (!dailyPoints[date][pId]) dailyPoints[date][pId] = 0;
+            dailyPoints[date][pId] += pts;
+        });
+    });
+    let highestDaily = { pt: -Infinity, name: '', id: '' };
+    Object.values(dailyPoints).forEach(day => {
+        Object.entries(day).forEach(([pId, pt]) => {
+            if (pt > highestDaily.pt) {
+                const user = state.users.find(u => u.id === pId);
+                if (user) highestDaily = { pt, name: user.name, id: pId };
+            }
+        });
+    });
+
     statCardsContainer.innerHTML = `
         <div class="cyber-card p-3"><p class="text-sm text-gray-400">総半荘数</p><p class="text-2xl font-bold">${totalHanchans}</p></div>
         <div class="cyber-card p-3"><p class="text-sm text-gray-400">開催日数</p><p class="text-2xl font-bold">${gameDays}</p></div>
         <div class="cyber-card p-3"><p class="text-sm text-gray-400">現時点トップ</p><p class="text-xl font-bold">${leader.name}</p></div>
         <div class="cyber-card p-3"><p class="text-sm text-gray-400">1半荘最高素点</p><p class="text-xl font-bold">${highestHanchan.name}</p><p class="text-xs">${highestHanchan.score.toLocaleString()}点</p></div>
+        <div class="cyber-card p-3"><p class="text-sm text-gray-400">参加半荘数トップ</p><p class="text-xl font-bold">${topHanchansPlayer.name}</p><p class="text-xs">${topHanchansPlayer.totalHanchans}半荘</p></div>
+        <div class="cyber-card p-3"><p class="text-sm text-gray-400">１日獲得Ptトップ</p><p class="text-xl font-bold">${highestDaily.name}</p><p class="text-xs">+${highestDaily.pt.toFixed(1)} pt</p></div>
     `;
 
     // Top 3 Players
@@ -1043,7 +1066,10 @@ export function updateDataAnalysisCharts() {
         const { min, max } = fixedAxes[key];
         if (max === min) return 50;
         const clampedValue = Math.max(min, Math.min(max, value));
-        if (key === 'lastRate' || key === 'avgRank') {
+        if (key === 'lastRate') { // ラス率は低い方が良いので反転
+            return 100 * ((max - clampedValue) / (max - min));
+        }
+        if (key === 'avgRank') { // 平均順位は低い方が良いので反転
             return 100 * ((max - clampedValue) / (max - min));
         }
         return 100 * ((clampedValue - min) / (max - min));
