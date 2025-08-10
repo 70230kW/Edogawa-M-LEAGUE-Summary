@@ -50,7 +50,7 @@ export function updateAllViews() {
 
     // 他のタブでも更新が必要なフィルター類
     updateHistoryTabFilters();
-    updateDetailedHistoryTabFilters(); // ★★★ 修正箇所 ★★★
+    updateDetailedHistoryTabFilters();
 }
 
 
