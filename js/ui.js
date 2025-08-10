@@ -28,7 +28,7 @@ export function updateAllViews() {
         if (selectedPlayerId && state.users.some(u => u.id === selectedPlayerId)) {
             document.getElementById('personal-stats-player-select').value = selectedPlayerId;
             displayPlayerStats(selectedPlayerId);
-        } else if (!selectedPlayerId) {
+        } else {
             displayPlayerStats(null); // 選択がない場合は初期状態を表示
         }
     }
@@ -39,11 +39,11 @@ export function updateAllViews() {
     }
 
     // ゲームタブは常に状態をチェックして更新
-    if (document.getElementById('game-tab')) {
-        if (document.getElementById('step1-player-selection').style.display !== 'none') {
+    if (document.getElementById('game-tab') && !document.getElementById('game-tab').classList.contains('hidden')) {
+        if (document.getElementById('step1-player-selection') && document.getElementById('step1-player-selection').style.display !== 'none') {
             renderPlayerSelection();
         }
-        if (!document.getElementById('step3-score-input')?.classList.contains('hidden')) {
+        if (document.getElementById('step3-score-input') && !document.getElementById('step3-score-input').classList.contains('hidden')) {
             renderScoreDisplay();
         }
     }
@@ -51,6 +51,7 @@ export function updateAllViews() {
     // 他のタブでも更新が必要なフィルター類
     updateHistoryTabFilters();
 }
+
 
 /**
  * ページ読み込み時に各タブの初期HTML構造を描画する
@@ -229,7 +230,7 @@ export function renderScoreDisplay() {
         const isComplete = Object.values(scores).every(s => s !== null && s !== '');
         const totalColor = isComplete && Math.round(total) !== basePoint * 4 ? 'text-red-500' : (isComplete ? 'text-green-400' : '');
 
-        const { points, rawRanks, pointRanks } = calculateHanchanRanksAndPoints(scores);
+        const { points, rawRanks } = calculateHanchanRanksAndPoints(scores);
 
         const yakumanHtml = (hanchan.yakumanEvents && hanchan.yakumanEvents.length > 0)
             ? `<div class="mt-2 border-t border-gray-700 pt-2">
@@ -272,9 +273,8 @@ export function renderScoreDisplay() {
                         ${state.selectedPlayers.map(p => {
                 const rawScoreRank = rawRanks[p.id];
                 const rawScoreClass = rawScoreRank === 1 ? 'text-rank-1' : (rawScoreRank === 4 ? 'text-rank-4' : '');
-                const pointRank = pointRanks[p.id];
-                const pointClass = pointRank === 1 ? 'text-rank-1' : (pointRank === 4 ? 'text-rank-4' : '');
                 const pointValue = points[p.id];
+                const pointClass = pointValue >= 0 ? 'text-green-400' : 'text-red-400';
 
                 return `
                             <tr>
@@ -356,7 +356,7 @@ export function updateLeaderboard() {
     const currentPeriod = periodSelect.value;
     const yearOptions = getGameYears().map(year => `<option value="${year}" ${currentPeriod === year ? 'selected' : ''}>${year}年</option>`).join('');
     periodSelect.innerHTML = `<option value="all" ${!currentPeriod || currentPeriod === 'all' ? 'selected' : ''}>全期間</option>${yearOptions}`;
-    
+
     const period = periodSelect.value;
 
     const filteredGames = state.games.filter(game => {
@@ -368,13 +368,13 @@ export function updateLeaderboard() {
 
     const statsForPeriod = calculateAllPlayerStats(filteredGames);
     const rankedUsers = Object.values(statsForPeriod).filter(u => u.totalHanchans > 0);
-    
+
     const leaderboardBody = document.getElementById('leaderboard-body');
     const cardsContainer = document.getElementById('leaderboard-cards-container');
 
     if (rankedUsers.length === 0) {
-        if(leaderboardBody) leaderboardBody.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-gray-500">NO DATA</td></tr>`;
-        if(cardsContainer) cardsContainer.innerHTML = `<p class="text-center py-4 text-gray-500">NO DATA</p>`;
+        if (leaderboardBody) leaderboardBody.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-gray-500">NO DATA</td></tr>`;
+        if (cardsContainer) cardsContainer.innerHTML = `<p class="text-center py-4 text-gray-500">NO DATA</p>`;
         return;
     }
 
@@ -390,7 +390,7 @@ export function updateLeaderboard() {
     });
 
     rankedUsers.sort((a, b) => b.totalPoints - a.totalPoints);
-    
+
     const getClass = (field, value) => {
         if (rankedUsers.length <= 1 || minMax[field].min === minMax[field].max) return '';
         if (statFields[field] === 'higher') {
@@ -419,8 +419,8 @@ export function updateLeaderboard() {
                     <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right">${user.totalHanchans.toLocaleString()}</td>
                     <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('avgRank', user.avgRank)}">${user.avgRank.toFixed(2)}</td>
                     <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('topRate', user.topRate)}">${user.topRate.toFixed(2)}%</td>
-                    <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ">${user.ranks[1] > 0 ? ((user.ranks[1]/user.totalHanchans)*100).toFixed(2) : '0.00'}%</td>
-                    <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ">${user.ranks[2] > 0 ? ((user.ranks[2]/user.totalHanchans)*100).toFixed(2) : '0.00'}%</td>
+                    <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ">${user.ranks[1] > 0 ? ((user.ranks[1] / user.totalHanchans) * 100).toFixed(2) : '0.00'}%</td>
+                    <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ">${user.ranks[2] > 0 ? ((user.ranks[2] / user.totalHanchans) * 100).toFixed(2) : '0.00'}%</td>
                     <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('lastRate', user.lastRate)}">${user.lastRate.toFixed(2)}%</td>
                     <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('rentaiRate', user.rentaiRate)}">${user.rentaiRate.toFixed(2)}%</td>
                     <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('bustedRate', user.bustedRate)}">${user.bustedRate.toFixed(2)}%</td>
@@ -462,66 +462,184 @@ export function updateLeaderboard() {
 
 // --- Trophy Tab ---
 export function renderTrophyTab() {
-    // ... (This function's logic remains the same, just creates the initial HTML structure)
+    const container = document.getElementById('trophy-tab');
+    if (!container) return;
+    container.innerHTML = `
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+            <h2 class="cyber-header text-2xl font-bold text-blue-400">トロフィー</h2>
+            <div class="flex items-center gap-4">
+                <select id="trophy-year-filter" class="rounded-md p-1"></select>
+                <select id="trophy-player-filter" class="rounded-md p-1"></select>
+            </div>
+        </div>
+        <div id="trophy-list-container" class="space-y-8"></div>
+    `;
 }
+
 export function updateTrophyPage() {
-    // ... (This function's logic remains the same, but uses `state.playerTrophies`)
+    const container = document.getElementById('trophy-list-container');
+    const yearSelect = document.getElementById('trophy-year-filter');
+    const playerSelect = document.getElementById('trophy-player-filter');
+    if (!container || !yearSelect || !playerSelect) return;
+
+    const currentYear = yearSelect.value;
+    const currentPlayer = playerSelect.value;
+
+    const yearOptions = getGameYears().map(year => `<option value="${year}" ${currentYear === year ? 'selected' : ''}>${year}年</option>`).join('');
+    const playerOptions = state.users.map(u => `<option value="${u.id}" ${currentPlayer === u.id ? 'selected' : ''}>${u.name}</option>`).join('');
+    yearSelect.innerHTML = `<option value="all" ${!currentYear || currentYear === 'all' ? 'selected' : ''}>全期間</option>${yearOptions}`;
+    playerSelect.innerHTML = `<option value="all" ${!currentPlayer || currentPlayer === 'all' ? 'selected' : ''}>全選択</option>${playerOptions}`;
+
+    const yearFilter = yearSelect.value;
+    const playerFilter = playerSelect.value;
+
+    const filteredGames = state.games.filter(game => {
+        if (yearFilter === 'all') return true;
+        const gameYear = (game.gameDate || '').substring(0, 4);
+        return gameYear === yearFilter;
+    });
+
+    const statsForPeriod = calculateAllPlayerStats(filteredGames);
+    checkAllTrophies(filteredGames, statsForPeriod);
+
+    let html = '';
+    Object.entries(TROPHY_DEFINITIONS).forEach(([rank, trophies]) => {
+        html += `<div class="rank-category">
+            <h3 class="cyber-header text-xl font-bold mb-4 border-b-2 pb-2" style="border-color: var(--rank-${rank}); color: var(--rank-${rank});">${rank.charAt(0).toUpperCase() + rank.slice(1)}</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${trophies.map(trophy => {
+            let isAchieved = false;
+            if (playerFilter === 'all') {
+                isAchieved = Object.values(state.playerTrophies).some(p => p[trophy.id]);
+            } else {
+                isAchieved = state.playerTrophies[playerFilter]?.[trophy.id] || false;
+            }
+            const secretClass = trophy.secret ? 'secret' : '';
+            const trophyName = (trophy.secret && !isAchieved) ? '？？？' : trophy.name;
+            const trophyDesc = (trophy.secret && !isAchieved) ? '条件を満たすと開示されます' : trophy.desc;
+            const trophyIcon = (trophy.secret && !isAchieved) ? 'fa-question-circle' : trophy.icon;
+
+            return `
+                    <div class="trophy-card p-4 flex items-center gap-4 rounded-lg rank-${rank} ${isAchieved ? 'achieved' : ''} ${secretClass}">
+                        <i class="fas ${trophyIcon} fa-3x w-12 text-center trophy-icon"></i>
+                        <div>
+                            <h4 class="font-bold text-lg">${trophyName}</h4>
+                            <p class="text-sm text-gray-400">${trophyDesc}</p>
+                        </div>
+                    </div>
+                    `;
+        }).join('')}
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html;
 }
 
 // --- History Tabs ---
 export function renderHistoryTab() {
-    // ... (Creates initial HTML structure)
+    const container = document.getElementById('history-tab');
+    if (!container) return;
+    container.innerHTML = `
+        <h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">対局履歴</h2>
+        <div class="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-gray-900 rounded-lg">
+            <div class="flex-1">
+                <label for="history-year-filter" class="block text-sm font-medium text-gray-400">年</label>
+                <select id="history-year-filter" class="mt-1 block w-full rounded-md"></select>
+            </div>
+            <div class="flex-1">
+                <label for="history-month-filter" class="block text-sm font-medium text-gray-400">月</label>
+                <select id="history-month-filter" class="mt-1 block w-full rounded-md"></select>
+            </div>
+            <div class="flex-1">
+                <label for="history-player-filter" class="block text-sm font-medium text-gray-400">雀士</label>
+                <select id="history-player-filter" class="mt-1 block w-full rounded-md"></select>
+            </div>
+        </div>
+        <div id="history-list-container" class="space-y-4"></div>
+    `;
 }
+
 export function updateHistoryTabFilters() {
-    // ... (Updates filter dropdowns based on `state.games` and `state.users`)
+    const yearSelect = document.getElementById('history-year-filter');
+    const monthSelect = document.getElementById('history-month-filter');
+    const playerSelect = document.getElementById('history-player-filter');
+    if (!yearSelect || !monthSelect || !playerSelect) return;
+
+    const currentYear = yearSelect.value;
+    const currentMonth = monthSelect.value;
+    const currentPlayer = playerSelect.value;
+
+    const yearOptions = getGameYears().map(year => `<option value="${year}">${year}年</option>`).join('');
+    yearSelect.innerHTML = `<option value="all">すべて</option>${yearOptions}`;
+    if (Array.from(yearSelect.options).some(opt => opt.value === currentYear)) yearSelect.value = currentYear;
+
+    if (monthSelect.options.length === 0) {
+        const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1).map(m => `<option value="${m}">${m}月</option>`).join('');
+        monthSelect.innerHTML = `<option value="all">すべて</option>${monthOptions}`;
+    }
+    if (Array.from(monthSelect.options).some(opt => opt.value === currentMonth)) monthSelect.value = currentMonth;
+
+    const playerOptions = state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    playerSelect.innerHTML = `<option value="all">すべて</option>${playerOptions}`;
+    if (Array.from(playerSelect.options).some(opt => opt.value === currentPlayer)) playerSelect.value = currentPlayer;
 }
+
 export function updateHistoryList() {
-    // ... (Filters and renders the history list based on selected filters)
-}
-export function renderDetailedHistoryTabContainers() {
-    // ... (Creates initial HTML structure for detailed history tabs)
-}
-export function renderDetailedHistoryTables() {
-    // ... (Renders the detailed raw score and point tables)
-}
+    const container = document.getElementById('history-list-container');
+    if (!container) return;
 
-// --- Personal Stats Tab ---
-export function renderPersonalStatsTab() {
-    // ... (Renders the tab structure, including the player dropdown)
-}
-export function displayPlayerStats(playerId) {
-    // ... (Renders the detailed stats for a selected player)
-}
-export function renderStatsCharts(mainPlayerId) {
-    // ... (Renders the personal stats charts)
-}
-export function renderPlayerHistoryTable(playerId) {
-    // ... (Renders the table of a player's past games)
-}
+    const yearFilter = document.getElementById('history-year-filter').value;
+    const monthFilter = document.getElementById('history-month-filter').value;
+    const playerFilter = document.getElementById('history-player-filter').value;
 
-// --- Data Analysis Tab ---
-export function renderDataAnalysisTab() {
-    // ... (Creates the initial HTML structure for the data analysis dashboard)
-}
-export function updateDataAnalysisCharts() {
-    // ... (Renders all charts on the data analysis tab)
-}
+    let filteredGames = [...state.games];
+    if (yearFilter !== 'all') {
+        filteredGames = filteredGames.filter(game => (game.gameDate || '').substring(0, 4) === yearFilter);
+    }
+    if (monthFilter !== 'all') {
+        filteredGames = filteredGames.filter(game => {
+            if (!game.gameDate) return false;
+            const parts = game.gameDate.split('/');
+            return parts.length > 1 && parts[1] === monthFilter;
+        });
+    }
+    if (playerFilter !== 'all') {
+        filteredGames = filteredGames.filter(game => game.playerIds.includes(playerFilter));
+    }
 
-// --- Head to Head Tab ---
-export function renderHeadToHeadTab() {
-    // ... (Creates the initial HTML structure for the head-to-head tab)
-}
-export function updateHeadToHeadDropdowns() {
-    // ... (Updates the player selection dropdowns)
-}
-export function displayHeadToHeadStats() {
-    // ... (Calculates and displays the H2H stats)
-}
+    if (filteredGames.length === 0) {
+        container.innerHTML = `<p class="text-gray-500 text-center py-8">該当する対局履歴がありません。</p>`;
+        return;
+    }
 
-// --- User Management Tab ---
-export function renderUserManagementTab() {
-    // ... (Creates the initial HTML structure for the user management tab)
+    container.innerHTML = filteredGames.map(game => {
+        const date = game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
+        const winnerEntry = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
+        const winnerId = winnerEntry[0];
+        const winnerUser = state.users.find(u => u.id === winnerId);
+        const photoHtml = getPlayerPhotoHtml(winnerId, 'w-8 h-8');
+
+        return `
+            <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="cursor-pointer flex-grow" data-action="show-game-details" data-game-id="${game.id}">
+                    <p class="font-bold text-lg pointer-events-none">${date}</p>
+                    <p class="text-sm text-gray-400 pointer-events-none">${game.playerNames.join(', ')}</p>
+                </div>
+                <div class="flex justify-between w-full sm:w-auto items-center">
+                    <div class="text-left sm:text-right mr-4 cursor-pointer flex items-center gap-2" data-action="show-game-details" data-game-id="${game.id}">
+                        ${photoHtml}
+                        <div class="pointer-events-none">
+                            <p class="text-xs">WINNER</p>
+                            <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winnerEntry[1].toFixed(1)})</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button data-action="edit-game" data-game-id="${game.id}" class="text-blue-400 hover:text-blue-300 text-lg p-2 self-center"><i class="fas fa-edit"></i></button>
+                        <button data-action="delete-game" data-game-id="${game.id}" data-date="${date}" class="text-red-500 hover:text-red-400 text-lg p-2 self-center"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
-export function renderUserManagementList() {
-    // ... (Renders the list of users with edit/delete buttons)
-}
+// ... (The rest of the functions will be added in the next section)
