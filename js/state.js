@@ -30,6 +30,90 @@ export function resetGame() {
     state.selectedPlayers = [];
     state.hanchanScores = [];
     state.editingGameId = null;
+    localStorage.removeItem('edogawa-m-league-partial');
 }
 
-// ... 他の状態管理関数 ...
+export function addHanchan() {
+    const newHanchan = { rawScores: {}, yakumanEvents: [], penalties: [] };
+    state.selectedPlayers.forEach(p => {
+        newHanchan.rawScores[p.id] = null;
+    });
+    state.hanchanScores.push(newHanchan);
+}
+
+export function deleteHanchan(index) {
+    if (state.hanchanScores.length > 1) {
+        state.hanchanScores.splice(index, 1);
+        return true;
+    }
+    return false;
+}
+
+export function saveScoresFromModal(index) {
+    const newScores = {};
+    let total = 0;
+    let hasEmpty = false;
+    state.selectedPlayers.forEach(p => {
+        const input = document.getElementById(`modal-score-${p.id}`);
+        const value = input.value;
+        if (value === '' || value === null || value === '-') {
+            hasEmpty = true;
+            newScores[p.id] = null;
+        } else {
+            const score = Number(value);
+            newScores[p.id] = score;
+            total += score;
+        }
+    });
+
+    if (!hasEmpty) {
+        const basePoint = Number(document.getElementById('base-point').value);
+        const targetTotal = basePoint * 4;
+        if (Math.round(total) !== targetTotal) {
+            return `合計点が ${targetTotal.toLocaleString()} になっていません。(現在: ${total.toLocaleString()})`;
+        }
+    }
+    
+    state.hanchanScores[index].rawScores = newScores;
+    return null; // No error
+}
+
+export function savePartialData() {
+    const gameData = {
+        selectedPlayers: state.selectedPlayers,
+        gameDate: document.getElementById('game-date').value,
+        basePoint: document.getElementById('base-point').value,
+        returnPoint: document.getElementById('return-point').value,
+        uma1: document.getElementById('uma-1').value,
+        uma2: document.getElementById('uma-2').value,
+        uma3: document.getElementById('uma-3').value,
+        uma4: document.getElementById('uma-4').value,
+        scores: state.hanchanScores
+    };
+    localStorage.setItem('edogawa-m-league-partial', JSON.stringify(gameData));
+}
+
+export function loadSavedGameData() {
+    const savedDataJSON = localStorage.getItem('edogawa-m-league-partial');
+    if (!savedDataJSON) return false;
+
+    const savedData = JSON.parse(savedDataJSON);
+    if (savedData.selectedPlayers && savedData.selectedPlayers.length === 4) {
+        state.selectedPlayers = savedData.selectedPlayers;
+        state.hanchanScores = savedData.scores || [];
+        
+        document.getElementById('base-point').value = savedData.basePoint;
+        document.getElementById('return-point').value = savedData.returnPoint;
+        document.getElementById('uma-1').value = savedData.uma1;
+        document.getElementById('uma-2').value = savedData.uma2;
+        document.getElementById('uma-3').value = savedData.uma3;
+        document.getElementById('uma-4').value = savedData.uma4;
+        document.getElementById('game-date').value = savedData.gameDate;
+        
+        if (state.hanchanScores.length === 0) {
+            addHanchan();
+        }
+        return true;
+    }
+    return false;
+}
