@@ -487,8 +487,13 @@ export function updateTrophyPage() {
 
     const yearOptions = getGameYears().map(year => `<option value="${year}" ${currentYear === year ? 'selected' : ''}>${year}年</option>`).join('');
     const playerOptions = state.users.map(u => `<option value="${u.id}" ${currentPlayer === u.id ? 'selected' : ''}>${u.name}</option>`).join('');
+    
     yearSelect.innerHTML = `<option value="all" ${!currentYear || currentYear === 'all' ? 'selected' : ''}>全期間</option>${yearOptions}`;
-    playerSelect.innerHTML = `<option value="all" ${!currentPlayer || currentPlayer === 'all' ? 'selected' : ''}>全選択</option>${playerOptions}`;
+    playerSelect.innerHTML = `
+        <option value="" ${!currentPlayer ? 'selected' : ''}>雀士を選択してください</option>
+        <option value="all" ${currentPlayer === 'all' ? 'selected' : ''}>全員の獲得状況</option>
+        ${playerOptions}
+    `;
 
     const yearFilter = yearSelect.value;
     const playerFilter = playerSelect.value;
@@ -511,9 +516,11 @@ export function updateTrophyPage() {
             let isAchieved = false;
             if (playerFilter === 'all') {
                 isAchieved = Object.values(state.playerTrophies).some(p => p[trophy.id]);
-            } else {
+            } else if (playerFilter) { // 雀士が選択されている場合
                 isAchieved = state.playerTrophies[playerFilter]?.[trophy.id] || false;
             }
+            // playerFilterが"" (雀士を選択してください) の場合は isAchieved は false のまま
+
             const secretClass = trophy.secret ? 'secret' : '';
             const trophyName = (trophy.secret && !isAchieved) ? '？？？' : trophy.name;
             const trophyDesc = (trophy.secret && !isAchieved) ? '条件を満たすと開示されます' : trophy.desc;
