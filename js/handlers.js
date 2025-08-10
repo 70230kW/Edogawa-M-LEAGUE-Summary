@@ -1,4 +1,3 @@
-import { state, resetGame, addHanchan, deleteHanchan, saveScoresFromModal, savePartialData } from './state.js';
 // js/handlers.js
 
 import {
@@ -19,10 +18,6 @@ import {
 } from './firebase.js';
 
 import { state, resetGame, addHanchan, deleteHanchan, saveScoresFromModal, savePartialData } from './state.js';
-import * as ui from './ui.js';
-import { getGameDataFromForm, calculateHanchanRanksAndPoints } from './utils.js';
-
-// ... (以降のコードは変更なし)
 import * as ui from './ui.js';
 import { getGameDataFromForm, calculateHanchanRanksAndPoints } from './utils.js';
 
