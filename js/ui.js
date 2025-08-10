@@ -984,7 +984,108 @@ export function renderDataAnalysisTab() {
 }
 
 export function updateDataAnalysisCharts() {
-    // ... (This function's logic remains the same as in the original file, but uses `state` variables)
+    if (state.users.length === 0 || state.games.length === 0) return;
+    
+    const rankedUsers = Object.values(state.cachedStats).filter(u => u.totalHanchans > 0);
+    const colors = ['#58a6ff', '#52c569', '#f5655f', '#E2FF08', '#e0aaff', '#9bf6ff', '#ffb700', '#00ffc8'];
+    const allPlayers = [...rankedUsers].sort((a,b) => b.totalPoints - a.totalPoints);
+
+    // Stat Cards
+    const statCardsContainer = document.getElementById('stat-cards-container');
+    if (rankedUsers.length > 0) {
+        const totalHanchans = rankedUsers.reduce((sum, u) => sum + u.totalHanchans, 0);
+        const gameDays = new Set(state.games.map(g => g.gameDate.split('(')[0])).size;
+        const leader = allPlayers[0];
+        let highestHanchan = { score: -Infinity, name: '', id: '' };
+        state.games.forEach(g => g.scores.forEach(s => Object.entries(s.rawScores).forEach(([pId, score]) => {
+            if (score > highestHanchan.score) {
+                highestHanchan = { score, name: state.users.find(u=>u.id===pId)?.name, id: pId };
+            }
+        })));
+        // ... (more stat card logic can be added here)
+        statCardsContainer.innerHTML = `
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">総半荘数</p><p class="text-2xl font-bold">${totalHanchans}</p></div>
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">開催日数</p><p class="text-2xl font-bold">${gameDays}</p></div>
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">現時点トップ</p><p class="text-xl font-bold">${leader.name}</p></div>
+            <div class="cyber-card p-3"><p class="text-sm text-gray-400">1半荘最高素点</p><p class="text-xl font-bold">${highestHanchan.name}</p><p class="text-xs">${highestHanchan.score.toLocaleString()}点</p></div>
+        `;
+    }
+
+    // Top 3 Players
+    const top3Container = document.getElementById('top-3-container');
+    if (top3Container && allPlayers.length > 0) {
+        top3Container.innerHTML = `<h3 class="cyber-header text-xl font-bold mb-4 text-center text-yellow-300">現時点トップ３</h3>
+            <div class="flex justify-around items-end gap-4">
+                ${allPlayers.slice(0, 3).map((p, i) => {
+                    const rankClass = i === 0 ? 'text-rank-gold' : (i === 1 ? 'text-rank-silver' : 'text-rank-bronze');
+                    const sizeClass = i === 0 ? 'w-24 h-24' : (i === 1 ? 'w-20 h-20' : 'w-16 h-16');
+                    return `<div class="text-center flex flex-col items-center">
+                        <span class="font-bold text-2xl ${rankClass}">${i+1}</span>
+                        ${getPlayerPhotoHtml(p.id, sizeClass)}
+                        <span class="font-bold mt-2 text-blue-400">${p.name}</span>
+                        <span class="text-sm ${p.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${p.totalPoints.toFixed(1)} pt</span>
+                    </div>`
+                }).join('')}
+            </div>`;
+    }
+
+    // Radar Chart
+    const radarPlayerSelect = document.getElementById('radar-player-select');
+    const selectedRadarPlayerIds = Array.from(radarPlayerSelect.querySelectorAll('input:checked')).map(cb => cb.value);
+    if (selectedRadarPlayerIds.length === 0) {
+        radarPlayerSelect.innerHTML = allPlayers.map(u => `
+            <label class="flex items-center cursor-pointer p-1 rounded"><input type="checkbox" value="${u.id}" class="radar-checkbox" checked><span>${u.name}</span></label>
+        `).join('');
+    }
+    const radarData = {
+        labels: ['平均素点', 'トップ率', '連対率', 'ラス回避率', '平均順位'],
+        datasets: allPlayers.filter(p => selectedRadarPlayerIds.includes(p.id) || selectedRadarPlayerIds.length === 0).map((player, index) => {
+            const stats = state.cachedStats[player.id];
+            return {
+                label: player.name,
+                data: [stats.avgRawScore, stats.topRate, stats.rentaiRate, 100 - stats.lastRate, stats.avgRank],
+                borderColor: colors[index % colors.length],
+                backgroundColor: colors[index % colors.length] + '33',
+            };
+        })
+    };
+    if (state.charts.playerRadarChart) state.charts.playerRadarChart.destroy();
+    state.charts.playerRadarChart = new Chart(document.getElementById('player-radar-chart'), { type: 'radar', data: radarData, options: { /* ... options ... */ } });
+
+    // Point History Chart
+    const dateStrings = state.games.map(g => g.gameDate.split('(')[0]);
+    const fullTimeline = [...new Set(dateStrings)].sort((a, b) => new Date(a) - new Date(b));
+    const pointHistoryDatasets = allPlayers.map((player, index) => ({
+        label: player.name,
+        data: getPlayerPointHistory(player.id, fullTimeline),
+        borderColor: colors[index % colors.length],
+        fill: false,
+    }));
+    if (state.charts.pointHistoryChart) state.charts.pointHistoryChart.destroy();
+    state.charts.pointHistoryChart = new Chart(document.getElementById('point-history-chart'), { type: 'line', data: { labels: fullTimeline, datasets: pointHistoryDatasets }, options: { /* ... options ... */ } });
+
+    // Bar Chart
+    const barChartMetricSelect = document.getElementById('bar-chart-metric-select');
+    const metrics = { 'totalPoints': '合計Pt', 'avgRawScore': '平均素点', 'topRate': 'トップ率', 'lastRate': 'ラス率' };
+    if (barChartMetricSelect.options.length === 0) {
+        Object.entries(metrics).forEach(([key, value]) => barChartMetricSelect.add(new Option(value, key)));
+    }
+    const selectedMetric = barChartMetricSelect.value || 'totalPoints';
+    const lowerIsBetter = ['lastRate', 'avgRank'].includes(selectedMetric);
+    const sortedBarUsers = [...rankedUsers].sort((a, b) => lowerIsBetter ? a[selectedMetric] - b[selectedMetric] : b[selectedMetric] - a[selectedMetric]);
+    if (state.charts.playerBarChart) state.charts.playerBarChart.destroy();
+    state.charts.playerBarChart = new Chart(document.getElementById('player-bar-chart'), {
+        type: 'bar',
+        data: {
+            labels: sortedBarUsers.map(u => u.name),
+            datasets: [{
+                label: metrics[selectedMetric],
+                data: sortedBarUsers.map(u => u[selectedMetric]),
+                backgroundColor: sortedBarUsers.map((u, i) => colors[i % colors.length] + 'AA'),
+            }]
+        },
+        options: { indexAxis: 'y' }
+    });
 }
 
 // --- Head to Head Tab ---
