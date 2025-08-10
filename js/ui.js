@@ -1030,19 +1030,32 @@ export function updateDataAnalysisCharts() {
     // Radar Chart
     const radarLabels = ['平均素点', 'トップ率', '連対率', 'ラス回避率', '平均順位'];
     const radarStatKeys = ['avgRawScore', 'topRate', 'rentaiRate', 'lastRate', 'avgRank'];
-    const minMax = {};
-    radarStatKeys.forEach(key => {
-        const values = rankedUsers.map(u => u[key]);
-        minMax[key] = { min: Math.min(...values), max: Math.max(...values) };
-    });
+    
+    // ★★★ 修正箇所 ★★★
+    // 各軸の最小値と最大値を固定値で定義
+    const fixedAxes = {
+        avgRawScore: { min: 0, max: 35000 },
+        topRate: { min: 0, max: 50 },
+        rentaiRate: { min: 0, max: 100 },
+        lastRate: { min: 0, max: 100 }, // ラス率 (0%が良い)
+        avgRank: { min: 1, max: 4 }      // 平均順位 (1が良い)
+    };
 
+    // データを0-100の範囲に正規化する関数
     const normalize = (value, key) => {
-        const { min, max } = minMax[key];
-        if (max === min) return 50;
-        if (key === 'lastRate' || key === 'avgRank') { // Lower is better
-            return 100 * ((max - value) / (max - min));
+        const { min, max } = fixedAxes[key];
+        if (max === min) return 50; // ゼロ除算を避ける
+
+        // 値が定義された範囲外に出た場合、範囲内に収める
+        const clampedValue = Math.max(min, Math.min(max, value));
+
+        // 平均順位とラス率は、数値が低いほど良い成績なので、グラフ上の評価を反転させる
+        if (key === 'lastRate' || key === 'avgRank') {
+            return 100 * ((max - clampedValue) / (max - min));
         }
-        return 100 * ((value - min) / (max - min));
+        
+        // その他の項目は、数値が高いほど良い成績
+        return 100 * ((clampedValue - min) / (max - min));
     };
 
     const radarData = {
