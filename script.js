@@ -573,25 +573,12 @@ function updateTimeline() {
                 hanchan.yakumanEvents.forEach(event => {
                     const user = users.find(u => u.id === event.playerId);
                     if (user) {
+                        const yakumanNames = event.yakumans.map(y => `<strong class="text-yellow-300">${y}</strong>`).join(' & ');
                         events.push({
                             date: date,
                             type: 'yakuman',
                             icon: 'fa-dragon text-yellow-400',
-                            content: `<strong>${user.name}</strong>が<strong class="text-yellow-300">${event.yakumans.join(' & ')}</strong>を和了しました！`
-                        });
-                    }
-                });
-            }
-            if (hanchan.penalties) {
-                hanchan.penalties.forEach(event => {
-                    const user = users.find(u => u.id === event.playerId);
-                    if (user) {
-                        const typeText = event.type === 'chombo' ? 'チョンボ' : 'アガリ放棄';
-                        events.push({
-                            date: date,
-                            type: 'penalty',
-                            icon: 'fa-exclamation-triangle text-red-500',
-                            content: `<strong>${user.name}</strong>が${typeText}を記録しました。`
+                            content: `<strong>【役満速報】</strong><br>${user.name}さんが ${yakumanNames}を和了しました！`
                         });
                     }
                 });
@@ -627,16 +614,19 @@ function updateTimeline() {
             return { name: user ? user.name : '不明', total: total };
         }).sort((a, b) => b.total - a.total);
 
-        const resultString = playerResults.map(p => {
+        const rankEmojis = ['１着', '２着', '３着', '４着'];
+        const resultString = playerResults.map((p, index) => {
             const color = p.total > 0 ? 'text-green-400' : (p.total < 0 ? 'text-red-400' : '');
-            return `<strong>${p.name}</strong>: <span class="${color}">${p.total.toFixed(1)}</span>`;
-        }).join(', ');
+            return `${rankEmojis[index]}：${p.name}　<span class="${color}">${p.total.toFixed(1)} pt</span>`;
+        }).join('<br>');
+
+        const winnerName = playerResults.length > 0 ? playerResults[0].name : '';
 
         events.push({
             date: date,
             type: 'daily_result',
             icon: 'fa-calendar-day text-blue-400',
-            content: `この日の対局結果: ${resultString}`
+            content: `<strong>【対局結果速報】</strong><br>本日の対局結果を報告いたします。<br><br>${resultString}<br><br>${winnerName}さん、おめでとうございます！<br>皆さん本日もおつかれさまでした。`
         });
     });
 
@@ -648,11 +638,13 @@ function updateTimeline() {
                 const allTrophies = Object.values(TROPHY_DEFINITIONS).flat();
                 const trophy = allTrophies.find(t => t.id === trophyId);
                 if (trophy && date) {
+                    const rank = Object.keys(TROPHY_DEFINITIONS).find(r => TROPHY_DEFINITIONS[r].some(t => t.id === trophy.id));
+                    const trophyName = `<strong class="text-rank-${rank}">${trophy.name}</strong>`;
                      events.push({
                         date: date,
                         type: 'trophy',
-                        icon: `fa-trophy ${trophy.icon.includes('fa-') ? '' : 'fas'} ${trophy.icon}`,
-                        content: `<strong>${user.name}</strong>がトロフィー「<strong>${trophy.name}</strong>」を獲得しました！`
+                        icon: `fa-trophy text-rank-${rank}`,
+                        content: `<strong>【トロフィー速報】</strong><br>${user.name}さんが ${trophyName} を獲得しました！`
                     });
                 }
             });
@@ -663,7 +655,12 @@ function updateTimeline() {
     events.sort((a, b) => {
         const dateA = new Date(a.date.split('(')[0]);
         const dateB = new Date(b.date.split('(')[0]);
-        return dateB - dateA;
+        if (dateB - dateA !== 0) {
+            return dateB - dateA;
+        }
+        // If dates are the same, prioritize certain types
+        const typeOrder = { 'daily_result': 1, 'yakuman': 2, 'trophy': 3 };
+        return (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
     });
 
     if (events.length === 0) {
@@ -671,30 +668,17 @@ function updateTimeline() {
         return;
     }
 
-    container.innerHTML = events.map(event => {
-        let iconColor = 'text-gray-400';
-        if (event.type === 'yakuman') iconColor = 'text-yellow-400';
-        else if (event.type === 'penalty') iconColor = 'text-red-500';
-        else if (event.type === 'daily_result') iconColor = 'text-blue-400';
-        else if (event.type === 'trophy') {
-            const allTrophies = Object.values(TROPHY_DEFINITIONS).flat();
-            const trophyInfo = allTrophies.find(t => t.id === event.icon.split(' ')[1]);
-            const rank = Object.keys(TROPHY_DEFINITIONS).find(r => TROPHY_DEFINITIONS[r].some(t => t.id === trophyInfo?.id));
-            if(rank) iconColor = `text-rank-${rank}`;
-        }
-
-        return `
-            <div class="timeline-item flex items-start gap-4 p-3 border-b border-gray-800">
-                <div class="timeline-icon mt-1">
-                    <i class="fas ${event.icon} fa-lg ${iconColor}"></i>
-                </div>
-                <div class="flex-grow">
-                    <p class="text-sm text-gray-400">${event.date}</p>
-                    <p class="text-base">${event.content}</p>
-                </div>
+    container.innerHTML = events.map(event => `
+        <div class="timeline-item flex items-start gap-4 p-4 border-b border-gray-800">
+            <div class="timeline-icon mt-1">
+                <i class="fas ${event.icon} fa-lg"></i>
             </div>
-        `;
-    }).join('');
+            <div class="flex-grow">
+                <p class="text-sm text-gray-400 mb-1">${event.date}</p>
+                <p class="text-base leading-relaxed whitespace-pre-line">${event.content}</p>
+            </div>
+        </div>
+    `).join('');
 }
 
 
