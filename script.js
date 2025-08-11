@@ -16,6 +16,7 @@ let editingGameId = null; // ID of the game being edited
 // --- Performance Refactor: Cached Stats ---
 let cachedStats = {};
 let playerTrophies = {}; // { playerId: { trophyId: true, ... } }
+let trophyAcquisitionDates = {}; // { playerId: { trophyId: date, ... } }
 
 // Chart instances
 let playerRadarChart = null;
@@ -238,11 +239,11 @@ function initializeAppAndAuth() {
     // Initial render of all tab containers
     renderGameTab();
     renderLeaderboardTab();
+    renderTimelineTab();
     renderTrophyTab();
     renderDataAnalysisTab();
     renderPersonalStatsTab();
     renderUserManagementTab();
-    renderDetailedHistoryTabContainers();
     renderHeadToHeadTab();
     renderHistoryTab();
 }
@@ -254,10 +255,10 @@ function updateAllCalculationsAndViews() {
     cachedStats = calculateAllPlayerStats(games);
     
     updateLeaderboard();
+    updateTimeline();
     updateTrophyPage();
     updateHistoryTabFilters();
     updateHistoryList();
-    renderDetailedHistoryTables();
     renderUserManagementList();
     renderPersonalStatsTab();
     updateHeadToHeadDropdowns();
@@ -277,13 +278,6 @@ function updateAllCalculationsAndViews() {
         const playerId = document.getElementById('personal-stats-player-select')?.value;
         if (playerId) {
             displayPlayerStats(playerId);
-        }
-    } else if (activeTab === 'game') {
-        if (document.getElementById('step2-rule-settings')?.classList.contains('hidden')) {
-            renderPlayerSelection();
-        }
-        if(!document.getElementById('step3-score-input').classList.contains('hidden')) {
-            renderScoreDisplay();
         }
     } else if (activeTab === 'head-to-head') {
          displayHeadToHeadStats();
@@ -311,6 +305,8 @@ async function setupListeners() {
     const gamesQuery = query(gamesCollectionRef, orderBy("createdAt", "desc"));
     onSnapshot(gamesQuery, (snapshot) => {
         games = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Calculate trophy acquisition dates once games are loaded
+        calculateAllTrophyAcquisitionDates();
         updateAllCalculationsAndViews();
     });
 }
@@ -329,7 +325,7 @@ function getPlayerPhotoHtml(playerId, sizeClass = 'w-12 h-12') {
 }
 
 window.changeTab = (tabName) => {
-    ['game', 'leaderboard', 'trophy', 'data-analysis', 'personal-stats', 'history', 'head-to-head', 'history-raw', 'history-pt', 'users'].forEach(tab => {
+    ['game', 'leaderboard', 'timeline', 'trophy', 'data-analysis', 'personal-stats', 'history', 'head-to-head', 'users'].forEach(tab => {
         const tabEl = document.getElementById(`${tab}-tab`);
         if(tabEl) tabEl.classList.add('hidden');
         
@@ -350,6 +346,8 @@ window.changeTab = (tabName) => {
         displayHeadToHeadStats();
     } else if (tabName === 'trophy') {
         updateTrophyPage();
+    } else if (tabName === 'timeline') {
+        updateTimeline();
     }
 };
 
@@ -495,29 +493,6 @@ function renderPersonalStatsTab() {
     `;
 }
 
-function renderDetailedHistoryTabContainers() {
-    const rawContainer = document.getElementById('history-raw-tab');
-    const ptContainer = document.getElementById('history-pt-tab');
-    const filterHtml = (prefix) => `
-        <div class="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-gray-900 rounded-lg">
-            <div class="flex-1">
-                <label for="history-${prefix}-year-filter" class="block text-sm font-medium text-gray-400">年</label>
-                <select id="history-${prefix}-year-filter" onchange="renderDetailedHistoryTables()" class="mt-1 block w-full rounded-md"></select>
-            </div>
-            <div class="flex-1">
-                <label for="history-${prefix}-month-filter" class="block text-sm font-medium text-gray-400">月</label>
-                <select id="history-${prefix}-month-filter" onchange="renderDetailedHistoryTables()" class="mt-1 block w-full rounded-md"></select>
-            </div>
-            <div class="flex-1">
-                <label for="history-${prefix}-player-filter" class="block text-sm font-medium text-gray-400">雀士</label>
-                <select id="history-${prefix}-player-filter" onchange="renderDetailedHistoryTables()" class="mt-1 block w-full rounded-md"></select>
-            </div>
-        </div>
-    `;
-    rawContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (素点)</h2>${filterHtml('raw')}<div id="history-raw-list" class="overflow-x-auto"></div>`;
-    ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2>${filterHtml('pt')}<div id="history-pt-list" class="overflow-x-auto"></div>`;
-}
-
 function renderDataAnalysisTab() {
     const container = document.getElementById('data-analysis-tab');
     container.innerHTML = `
@@ -568,6 +543,158 @@ function renderHeadToHeadTab() {
             <p class="text-gray-500">比較したい雀士を2名選択してください。</p>
         </div>
     `;
+}
+
+// --- Timeline Functions ---
+function renderTimelineTab() {
+    const container = document.getElementById('timeline-tab');
+    if (!container) return;
+    container.innerHTML = `
+        <h2 class="cyber-header text-2xl font-bold text-blue-400 mb-4">タイムライン</h2>
+        <div id="timeline-content" class="space-y-4">
+            <p class="text-gray-500">イベントを読み込んでいます...</p>
+        </div>
+    `;
+}
+
+function updateTimeline() {
+    const container = document.getElementById('timeline-content');
+    if (!container) return;
+
+    let events = [];
+
+    // 1. Get Yakuman and Penalty Events
+    games.forEach(game => {
+        const date = game.gameDate;
+        if (!date) return;
+
+        game.scores.forEach(hanchan => {
+            if (hanchan.yakumanEvents) {
+                hanchan.yakumanEvents.forEach(event => {
+                    const user = users.find(u => u.id === event.playerId);
+                    if (user) {
+                        events.push({
+                            date: date,
+                            type: 'yakuman',
+                            icon: 'fa-dragon text-yellow-400',
+                            content: `<strong>${user.name}</strong>が<strong class="text-yellow-300">${event.yakumans.join(' & ')}</strong>を和了しました！`
+                        });
+                    }
+                });
+            }
+            if (hanchan.penalties) {
+                hanchan.penalties.forEach(event => {
+                    const user = users.find(u => u.id === event.playerId);
+                    if (user) {
+                        const typeText = event.type === 'chombo' ? 'チョンボ' : 'アガリ放棄';
+                        events.push({
+                            date: date,
+                            type: 'penalty',
+                            icon: 'fa-exclamation-triangle text-red-500',
+                            content: `<strong>${user.name}</strong>が${typeText}を記録しました。`
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    // 2. Get Daily Result Events
+    const gamesByDate = {};
+    games.forEach(game => {
+        const date = game.gameDate;
+        if (!date) return;
+        if (!gamesByDate[date]) {
+            gamesByDate[date] = [];
+        }
+        gamesByDate[date].push(game);
+    });
+
+    Object.entries(gamesByDate).forEach(([date, dateGames]) => {
+        const dailyTotals = {};
+        const playerSet = new Set();
+        dateGames.forEach(game => {
+            Object.entries(game.totalPoints).forEach(([playerId, points]) => {
+                if (!dailyTotals[playerId]) dailyTotals[playerId] = 0;
+                dailyTotals[playerId] += points;
+                playerSet.add(playerId);
+            });
+        });
+        
+        const playerResults = Array.from(playerSet).map(playerId => {
+            const user = users.find(u => u.id === playerId);
+            const total = dailyTotals[playerId] || 0;
+            return { name: user ? user.name : '不明', total: total };
+        }).sort((a, b) => b.total - a.total);
+
+        const resultString = playerResults.map(p => {
+            const color = p.total > 0 ? 'text-green-400' : (p.total < 0 ? 'text-red-400' : '');
+            return `<strong>${p.name}</strong>: <span class="${color}">${p.total.toFixed(1)}</span>`;
+        }).join(', ');
+
+        events.push({
+            date: date,
+            type: 'daily_result',
+            icon: 'fa-calendar-day text-blue-400',
+            content: `この日の対局結果: ${resultString}`
+        });
+    });
+
+    // 3. Get Trophy Events
+    Object.entries(trophyAcquisitionDates).forEach(([playerId, playerTrophies]) => {
+        const user = users.find(u => u.id === playerId);
+        if (user) {
+            Object.entries(playerTrophies).forEach(([trophyId, date]) => {
+                const allTrophies = Object.values(TROPHY_DEFINITIONS).flat();
+                const trophy = allTrophies.find(t => t.id === trophyId);
+                if (trophy && date) {
+                     events.push({
+                        date: date,
+                        type: 'trophy',
+                        icon: `fa-trophy ${trophy.icon.includes('fa-') ? '' : 'fas'} ${trophy.icon}`,
+                        content: `<strong>${user.name}</strong>がトロフィー「<strong>${trophy.name}</strong>」を獲得しました！`
+                    });
+                }
+            });
+        }
+    });
+
+    // 4. Sort and Render
+    events.sort((a, b) => {
+        const dateA = new Date(a.date.split('(')[0]);
+        const dateB = new Date(b.date.split('(')[0]);
+        return dateB - dateA;
+    });
+
+    if (events.length === 0) {
+        container.innerHTML = `<p class="text-gray-500 text-center py-8">まだタイムラインに表示するイベントがありません。</p>`;
+        return;
+    }
+
+    container.innerHTML = events.map(event => {
+        let iconColor = 'text-gray-400';
+        if (event.type === 'yakuman') iconColor = 'text-yellow-400';
+        else if (event.type === 'penalty') iconColor = 'text-red-500';
+        else if (event.type === 'daily_result') iconColor = 'text-blue-400';
+        else if (event.type === 'trophy') {
+            const allTrophies = Object.values(TROPHY_DEFINITIONS).flat();
+            const trophyInfo = allTrophies.find(t => t.id === event.icon.split(' ')[1]);
+            const rank = Object.keys(TROPHY_DEFINITIONS).find(r => TROPHY_DEFINITIONS[r].some(t => t.id === trophyInfo?.id));
+            if(rank) iconColor = `text-rank-${rank}`;
+        }
+
+        return `
+            <div class="timeline-item flex items-start gap-4 p-3 border-b border-gray-800">
+                <div class="timeline-icon mt-1">
+                    <i class="fas ${event.icon} fa-lg ${iconColor}"></i>
+                </div>
+                <div class="flex-grow">
+                    <p class="text-sm text-gray-400">${event.date}</p>
+                    <p class="text-base">${event.content}</p>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 
@@ -865,112 +992,6 @@ window.updateHistoryList = () => {
         `;
     }).join('');
 };
-
-
-function renderDetailedHistoryTables() {
-    const rawListContainer = document.getElementById('history-raw-list');
-    const ptListContainer = document.getElementById('history-pt-list');
-    if (!rawListContainer || !ptListContainer) return;
-
-    const allHanchans = [];
-    games.forEach(game => {
-        game.scores.forEach((hanchan, index) => {
-            allHanchans.push({
-                date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
-                gameId: game.id,
-                hanchanNum: index + 1,
-                playerIds: game.playerIds,
-                rawScores: hanchan.rawScores,
-                points: hanchan.points
-            });
-        });
-    });
-
-    const createTable = (dataType, container, yearFilter, monthFilter, playerFilter) => {
-         let filteredHanchans = [...allHanchans];
-
-        if (yearFilter !== 'all') {
-            filteredHanchans = filteredHanchans.filter(h => (h.date || '').substring(0, 4) === yearFilter);
-        }
-        if (monthFilter !== 'all') {
-            filteredHanchans = filteredHanchans.filter(h => {
-                if (!h.date) return false;
-                const parts = h.date.split('/');
-                return parts.length > 1 && parts[1] === monthFilter;
-            });
-        }
-        if (playerFilter !== 'all') {
-            filteredHanchans = filteredHanchans.filter(h => h.playerIds.includes(playerFilter));
-        }
-
-
-        let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic text-xs md:text-sm">
-            <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
-                <tr>
-                    <th class="px-2 py-3 text-left whitespace-nowrap">日時</th>
-                    ${users.map(u => `<th class="px-2 py-3 text-right whitespace-nowrap">${u.name}</th>`).join('')}
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-700">`;
-        
-        if (filteredHanchans.length === 0) {
-            tableHtml += `<tr><td colspan="${users.length + 1}" class="text-center py-4 text-gray-500">NO DATA</td></tr>`;
-        } else {
-            let lastDate = null;
-            filteredHanchans.forEach(hanchan => {
-                const currentDate = hanchan.date.split('(')[0];
-                let borderClass = '';
-                if (lastDate && currentDate !== lastDate) {
-                    borderClass = 'border-t-2 border-gray-500';
-                }
-                lastDate = currentDate;
-
-                const scores = hanchan[dataType];
-                const scoreGroups = {};
-                Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
-                    if (!scoreGroups[score]) scoreGroups[score] = [];
-                    scoreGroups[score].push(pId);
-                });
-                const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
-                
-                const ranks = {};
-                let rankCursor = 1;
-                sortedScores.forEach(score => {
-                    const playersInGroup = scoreGroups[score];
-                    playersInGroup.forEach(pId => { ranks[pId] = rankCursor; });
-                    rankCursor += playersInGroup.length;
-                });
-                
-                tableHtml += `<tr class="${borderClass}"><td class="px-2 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
-                users.forEach(user => {
-                    if (scores[user.id] !== undefined) {
-                        const rank = ranks[user.id];
-                        let rankClass = '';
-                        if (rank === 1) rankClass = 'text-rank-1';
-                        if (rank === 4) rankClass = 'text-rank-4';
-                        tableHtml += `<td class="px-2 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
-                    } else {
-                        tableHtml += `<td class="px-2 py-2 text-right text-gray-600">-</td>`;
-                    }
-                });
-                tableHtml += `</tr>`;
-            });
-        }
-
-        tableHtml += `</tbody></table>`;
-        container.innerHTML = tableHtml;
-    };
-    
-    const rawYear = document.getElementById('history-raw-year-filter').value;
-    const rawMonth = document.getElementById('history-raw-month-filter').value;
-    const rawPlayer = document.getElementById('history-raw-player-filter').value;
-    createTable('rawScores', rawListContainer, rawYear, rawMonth, rawPlayer);
-
-    const ptYear = document.getElementById('history-pt-year-filter').value;
-    const ptMonth = document.getElementById('history-pt-month-filter').value;
-    const ptPlayer = document.getElementById('history-pt-player-filter').value;
-    createTable('points', ptListContainer, ptYear, ptMonth, ptPlayer);
-}
 
 // --- Stats Page ---
 window.showPlayerStats = (playerId) => {
@@ -2602,8 +2623,6 @@ const TROPHY_DEFINITIONS = {
         { id: 'first_last', name: '捲土重来の誓い', desc: '初めて4位で半荘を終えた', icon: 'fa-flag' },
         { id: 'score_under_1000', name: '虫の息', desc: '持ち点が1,000点未満の状態で対局を終える', icon: 'fa-heart-pulse' },
         { id: 'daily_high_score', name: '今日のヒーロー', desc: '1日の対局で最も高いスコアを記録する', icon: 'fa-star' },
-        // { id: 'chombo', name: '学びの代償', desc: '初めてチョンボを記録する', icon: 'fa-book-open' },
-        // { id: 'agari_houki', name: '不幸中の幸い', desc: '初めてアガリ放棄を記録する', icon: 'fa-hands-praying' },
     ],
     silver: [
         { id: 'twenty_five_games', name: 'リーグの主軸', desc: '累計25半荘を戦い抜く', icon: 'fa-users' },
@@ -2615,8 +2634,6 @@ const TROPHY_DEFINITIONS = {
         { id: 'ten_tops', name: 'トップハンター', desc: '通算1位獲得回数が10回に到達する', icon: 'fa-crosshairs' },
         { id: 'monthly_player', name: 'マンスリープレイヤー', desc: '1か月のうちに15半荘以上対局する', icon: 'fa-calendar-days' },
         { id: 'zero_point_finish', name: '実質何もしてない', desc: '収支が±0.0で対局を終える', icon: 'fa-equals' },
-        // { id: 'jisaku_jien', name: '自作自演', desc: 'チョンボをした対局で、最終的にプラス収支で終える', icon: 'fa-theater-masks' },
-
     ],
     gold: [
         { id: 'fifty_tops', name: '伝説の始まり', desc: '通算1位獲得回数が50回に到達する', icon: 'fa-book-journal-whills' },
@@ -2659,7 +2676,6 @@ const TROPHY_DEFINITIONS = {
         { id: 'suuankou_tanki', name: '静寂切り裂く一閃', desc: '四暗刻単騎を和了する', icon: 'fa-user-ninja', secret: true },
         { id: 'junsei_chuuren', name: '死の篝火', desc: '純正九蓮宝燈を和了する', icon: 'fa-fire', secret: true },
         { id: 'daisuushii', name: '風を統べる者', desc: '大四喜を和了する', icon: 'fa-tornado', secret: true },
-        // { id: 'chombo_then_yakuman', name: '神託の体現者', desc: 'チョンボをしたその日の残りの半荘で役満を和了する', icon: 'fa-bolt' },
     ],
     chaos: [
         { id: 'yakuman_then_busted_last', name: '天国と地獄', desc: '役満を和了した次の対局で、ハコテンラスになる', icon: 'fa-yin-yang' },
@@ -2668,7 +2684,6 @@ const TROPHY_DEFINITIONS = {
         { id: 'reroll', name: 'リセマラ', desc: '最初の持ち点と全く同じ点数で対局を終える', icon: 'fa-arrow-rotate-left' },
         { id: 'chaos_theory', name: 'カオス理論', desc: '4半荘連続で、4人全員が違う順位になる', icon: 'fa-hurricane' },
         { id: 'peaceful_village', name: '平和村', desc: '4人の最終スコアが、全員25,000点ずつになる', icon: 'fa-dove' },
-        // { id: 'butterfly_effect', name: 'バタフライ・エフェクト', desc: 'チョンボによるペナルティがなければ、自分が1位だった', icon: 'fa-bug' },
     ]
 };
 
@@ -3028,6 +3043,69 @@ function checkAllTrophies(targetGames, currentStats) {
         playerTrophies[user.id].busted_minus_50k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] <= -50000));
         playerTrophies[user.id].yearly_last_player = rankedUsers.length > 0 && rankedUsers[rankedUsers.length - 1].id === user.id;
     });
+}
+
+/**
+ * Calculates the acquisition date for all trophies for all users.
+ * This is a potentially slow function and its results are cached.
+ */
+function calculateAllTrophyAcquisitionDates() {
+    if (Object.keys(trophyAcquisitionDates).length > 0) return; // Run only once
+
+    const allSortedGames = [...games].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+    const allTrophies = Object.values(TROPHY_DEFINITIONS).flat();
+
+    for (const user of users) {
+        trophyAcquisitionDates[user.id] = {};
+        const playerGames = allSortedGames.filter(g => g.playerIds.includes(user.id));
+        if (playerGames.length === 0) continue;
+
+        for (const trophy of allTrophies) {
+            // This is a simplified check. A full implementation would require a specific
+            // function for each trophy to find the exact date.
+            // For now, we find the first game that satisfies a simple condition.
+            if (trophy.id === 'first_game') {
+                trophyAcquisitionDates[user.id][trophy.id] = playerGames[0].gameDate;
+            }
+            if (trophy.id === 'yakuman') {
+                const gameWithYakuman = playerGames.find(g => 
+                    g.scores.some(s => s.yakumanEvents && s.yakumanEvents.some(y => y.playerId === user.id))
+                );
+                if (gameWithYakuman) {
+                    trophyAcquisitionDates[user.id][trophy.id] = gameWithYakuman.gameDate;
+                }
+            }
+             if (trophy.id === 'first_top') {
+                const gameWithTop = playerGames.find(g => 
+                    g.scores.some(s => {
+                        const ranks = getRanksFromScores(s.rawScores);
+                        return ranks[user.id] === 1;
+                    })
+                );
+                if (gameWithTop) {
+                    trophyAcquisitionDates[user.id][trophy.id] = gameWithTop.gameDate;
+                }
+            }
+        }
+    }
+}
+
+function getRanksFromScores(rawScores) {
+    const ranks = {};
+    const scoreGroups = {};
+    Object.entries(rawScores).forEach(([pId, score]) => {
+        if (!scoreGroups[score]) scoreGroups[score] = [];
+        scoreGroups[score].push(pId);
+    });
+    const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+    
+    let rankCursor = 1;
+    sortedScores.forEach(score => {
+        const playersInGroup = scoreGroups[score];
+        playersInGroup.forEach(pId => { ranks[pId] = rankCursor; });
+        rankCursor += playersInGroup.length;
+    });
+    return ranks;
 }
 
 
